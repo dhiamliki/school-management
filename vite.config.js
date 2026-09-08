@@ -1,21 +1,15 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
-import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
     plugins: [
+        // One entry point. The stylesheet is imported from app.js rather than
+        // listed here, so the SPA ships as a single JS/CSS pair.
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: ['resources/js/app.js'],
             refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
         }),
-        tailwindcss(),
         vue(),
     ],
     server: {

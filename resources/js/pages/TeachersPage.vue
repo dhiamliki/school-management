@@ -1,10 +1,15 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import AppIcon from '../components/AppIcon.vue';
 import AppModal from '../components/AppModal.vue';
+import EmptyState from '../components/EmptyState.vue';
 import FormField from '../components/FormField.vue';
+import LoadingState from '../components/LoadingState.vue';
+import PaginationControls from '../components/PaginationControls.vue';
 import { useResource } from '../composables/useResource';
 
-const { items, loading, saving, errors, failure, load, save, destroy } = useResource('/teachers');
+const { items, loading, meta, saving, errors, failure, load, goToPage, save, destroy } =
+    useResource('/teachers');
 
 const showForm = ref(false);
 const editingId = ref(null);
@@ -51,39 +56,47 @@ onMounted(load);
 <template>
     <div class="page-header">
         <h1>Enseignants</h1>
-        <button class="btn btn-primary" @click="openCreate">Ajouter un enseignant</button>
+        <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" :size="16" />Ajouter un enseignant</button>
     </div>
 
     <p v-if="failure" class="alert">{{ failure }}</p>
 
-    <div v-if="loading" class="state">Chargement…</div>
+    <LoadingState v-if="loading && !items.length" :rows="5" />
 
-    <table v-else>
-        <thead>
-            <tr>
-                <th>Nom</th>
-                <th>Email</th>
-                <th>Téléphone</th>
-                <th>Matière</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr v-if="!items.length">
-                <td colspan="5" class="muted">Aucun enseignant.</td>
-            </tr>
-            <tr v-for="teacher in items" :key="teacher.id">
-                <td>{{ teacher.name }}</td>
-                <td>{{ teacher.email }}</td>
-                <td>{{ teacher.phone || '—' }}</td>
-                <td>{{ teacher.subject || '—' }}</td>
-                <td class="actions">
-                    <button class="btn-link" @click="openEdit(teacher)">Modifier</button>
-                    <button class="btn-link danger" @click="remove(teacher)">Supprimer</button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <div v-else-if="!items.length" class="card">
+        <EmptyState title="Aucun enseignant." hint="Ajoutez un enseignant pour commencer." icon="teachers" />
+    </div>
+
+    <div v-else class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>Matière</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="teacher in items" :key="teacher.id">
+                    <td>
+                        <RouterLink :to="`/teachers/${teacher.id}`" class="row-link">{{ teacher.name }}</RouterLink>
+                    </td>
+                    <td>{{ teacher.email }}</td>
+                    <td>{{ teacher.phone || '–' }}</td>
+                    <td>{{ teacher.subject || '–' }}</td>
+                    <td class="actions">
+                        <RouterLink :to="`/teachers/${teacher.id}`" class="btn-link">Voir</RouterLink>
+                        <button class="btn-link" @click="openEdit(teacher)">Modifier</button>
+                        <button class="btn-link danger" @click="remove(teacher)">Supprimer</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <PaginationControls :meta="meta" :loading="loading" label="enseignants" @change="goToPage" />
 
     <AppModal
         v-if="showForm"

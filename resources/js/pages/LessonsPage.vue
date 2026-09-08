@@ -1,14 +1,23 @@
 <script setup>
 import { onMounted, ref } from 'vue';
+import AppIcon from '../components/AppIcon.vue';
 import AppModal from '../components/AppModal.vue';
+import EmptyState from '../components/EmptyState.vue';
 import FormField from '../components/FormField.vue';
-import { useResource } from '../composables/useResource';
+import LoadingState from '../components/LoadingState.vue';
+import PaginationControls from '../components/PaginationControls.vue';
+import { unwrapList, useResource } from '../composables/useResource';
 import api from '../lib/api';
 
-const { items, loading, saving, errors, failure, load, save, destroy } = useResource('/lessons');
+const { items, loading, meta, saving, errors, failure, load, goToPage, save, destroy } =
+    useResource('/lessons');
 
 const teachers = ref([]);
 const schoolClasses = ref([]);
+// Reported separately from the list's own failure: the table can load
+// perfectly well while the dropdowns behind the form do not, and saying
+// "impossible de charger les données" over a full table helps nobody.
+const optionsFailure = ref('');
 const showForm = ref(false);
 const editingId = ref(null);
 const form = ref(blankForm());
@@ -50,51 +59,65 @@ function remove(lesson) {
 
 onMounted(async () => {
     await load();
-    const [teacherResponse, classResponse] = await Promise.all([
-        api.get('/teachers'),
-        api.get('/school-classes'),
-    ]);
-    teachers.value = teacherResponse.data;
-    schoolClasses.value = classResponse.data;
+
+    try {
+        const [teacherResponse, classResponse] = await Promise.all([
+            api.get('/teachers', { params: { per_page: 100 } }),
+            api.get('/school-classes', { params: { per_page: 100 } }),
+        ]);
+        teachers.value = unwrapList(teacherResponse.data);
+        schoolClasses.value = unwrapList(classResponse.data);
+    } catch (error) {
+        // Left unhandled, this rejected into nothing and the form opened with
+        // two empty dropdowns and no explanation for them.
+        optionsFailure.value =
+            "Impossible de charger les enseignants et les classes. Rechargez la page avant d'ajouter un cours.";
+    }
 });
 </script>
 
 <template>
     <div class="page-header">
         <h1>Cours</h1>
-        <button class="btn btn-primary" @click="openCreate">Ajouter un cours</button>
+        <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" :size="16" />Ajouter un cours</button>
     </div>
 
     <p v-if="failure" class="alert">{{ failure }}</p>
+    <p v-if="optionsFailure" class="alert">{{ optionsFailure }}</p>
 
-    <div v-if="loading" class="state">Chargement…</div>
+    <LoadingState v-if="loading && !items.length" :rows="5" />
 
-    <table v-else>
-        <thead>
-            <tr>
-                <th>Titre</th>
-                <th>Matière</th>
-                <th>Enseignant</th>
-                <th>Classe</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr v-if="!items.length">
-                <td colspan="5" class="muted">Aucun cours.</td>
-            </tr>
-            <tr v-for="lesson in items" :key="lesson.id">
-                <td>{{ lesson.title }}</td>
-                <td>{{ lesson.subject || '—' }}</td>
-                <td>{{ lesson.teacher ? lesson.teacher.name : '—' }}</td>
-                <td>{{ lesson.school_class ? lesson.school_class.name : '—' }}</td>
-                <td class="actions">
-                    <button class="btn-link" @click="openEdit(lesson)">Modifier</button>
-                    <button class="btn-link danger" @click="remove(lesson)">Supprimer</button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <div v-else-if="!items.length" class="card">
+        <EmptyState title="Aucun cours." hint="Créez un cours pour commencer." icon="lessons" />
+    </div>
+
+    <div v-else class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Matière</th>
+                    <th>Enseignant</th>
+                    <th>Classe</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="lesson in items" :key="lesson.id">
+                    <td>{{ lesson.title }}</td>
+                    <td>{{ lesson.subject || '–' }}</td>
+                    <td>{{ lesson.teacher ? lesson.teacher.name : '–' }}</td>
+                    <td>{{ lesson.school_class ? lesson.school_class.name : '–' }}</td>
+                    <td class="actions">
+                        <button class="btn-link" @click="openEdit(lesson)">Modifier</button>
+                        <button class="btn-link danger" @click="remove(lesson)">Supprimer</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <PaginationControls :meta="meta" :loading="loading" label="cours" @change="goToPage" />
 
     <AppModal
         v-if="showForm"

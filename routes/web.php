@@ -1,20 +1,12 @@
 <?php
 
-use App\Http\Controllers\LessonController;
-use App\Http\Controllers\SchoolClassController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\TeacherController;
-use App\Http\Controllers\TimetableController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('api')->group(function () {
-    Route::apiResource('teachers', TeacherController::class);
-    Route::apiResource('school-classes', SchoolClassController::class);
-    Route::apiResource('students', StudentController::class);
-    Route::apiResource('lessons', LessonController::class);
-    Route::apiResource('timetables', TimetableController::class);
-});
+/*
+| The SPA shell. Everything that is not an API endpoint, the Sanctum CSRF
+| cookie route or the health check is handed to Vue Router.
+*/
 
 Route::get('/{any?}', function () {
     return view('app');
-})->where('any', '^(?!api|up).*$');
+})->where('any', '^(?!api|sanctum|up).*$');
