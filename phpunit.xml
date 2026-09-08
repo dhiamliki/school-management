@@ -29,6 +29,9 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- Pinned so the stateful-request tests do not depend on whatever a
+             developer happens to have in .env. -->
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
