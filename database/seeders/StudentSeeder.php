@@ -9,12 +9,15 @@ use Illuminate\Database\Seeder;
 class StudentSeeder extends Seeder
 {
     /**
-     * Total number of students to enrol.
+     * The size band a class is filled to. The upper bound is clamped to the
+     * class capacity so no class is ever seeded over its own limit.
      */
-    protected int $total = 30;
+    protected int $minPerClass = 18;
+
+    protected int $maxPerClass = 26;
 
     /**
-     * Seed the students table, spreading students evenly across the classes.
+     * Seed the students table, filling every class to a plausible size.
      */
     public function run(): void
     {
@@ -24,10 +27,11 @@ class StudentSeeder extends Seeder
             return;
         }
 
-        for ($i = 0; $i < $this->total; $i++) {
-            Student::factory()
-                ->forClass($classes[$i % $classes->count()])
-                ->create();
+        foreach ($classes as $class) {
+            $ceiling = min($this->maxPerClass, $class->capacity ?? $this->maxPerClass);
+            $size = fake()->numberBetween(min($this->minPerClass, $ceiling), $ceiling);
+
+            Student::factory()->count($size)->forClass($class)->create();
         }
     }
 }

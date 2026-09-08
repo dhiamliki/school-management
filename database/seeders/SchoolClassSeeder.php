@@ -9,14 +9,15 @@ use Illuminate\Database\Seeder;
 class SchoolClassSeeder extends Seeder
 {
     /**
-     * Seed the school_classes table.
+     * Seed the school_classes table with the six primary grades, each split
+     * into its lettered sections.
      */
     public function run(): void
     {
-        foreach (SchoolClassFactory::CLASSES as $name => $level) {
+        foreach (SchoolClassFactory::roster() as $class) {
             SchoolClass::factory()->create([
-                'name' => $name,
-                'level' => $level,
+                'name' => $class['name'],
+                'level' => (string) $class['grade'],
             ]);
         }
     }

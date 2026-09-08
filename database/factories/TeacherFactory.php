@@ -18,17 +18,22 @@ class TeacherFactory extends Factory
     protected $model = Teacher::class;
 
     /**
-     * The subjects taught at the school.
+     * The subjects taught at the école primaire.
      *
      * @var list<string>
      */
     public const SUBJECTS = [
+        'Langue Arabe',
+        'Langue Française',
+        'Langue Anglaise',
         'Mathématiques',
-        'Physique',
-        'Français',
-        'Anglais',
-        'Histoire',
-        'SVT',
+        'Éveil Scientifique',
+        'Sciences et Technologie',
+        'Histoire-Géographie',
+        'Éducation Islamique',
+        'Éducation Civique',
+        'Éducation Artistique',
+        'Éducation Physique',
     ];
 
     /**

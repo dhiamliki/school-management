@@ -18,17 +18,59 @@ class SchoolClassFactory extends Factory
     protected $model = SchoolClass::class;
 
     /**
-     * The class names available at the school, mapped to their level.
+     * The six grades of the Tunisian école primaire, mapped to the sections
+     * each one is split into. Real schools size their grades to the intake of
+     * the year, so the section count deliberately varies rather than being a
+     * fixed number per grade.
      *
-     * @var array<string, string>
+     * @var array<int, list<string>>
      */
-    public const CLASSES = [
-        '1ère A' => 'Première',
-        '2ème B' => 'Deuxième',
-        '3ème A' => 'Troisième',
-        'Terminale S' => 'Terminale',
-        'Terminale L' => 'Terminale',
+    public const SECTIONS = [
+        1 => ['A', 'B'],
+        2 => ['A', 'B'],
+        3 => ['A', 'B', 'C'],
+        4 => ['A', 'B', 'C'],
+        5 => ['A', 'B', 'C'],
+        6 => ['A', 'B', 'C'],
     ];
+
+    /**
+     * Spell a grade the way the school writes it: "1ère année", "3ème année".
+     */
+    public static function gradeLabel(int $grade): string
+    {
+        return $grade === 1 ? '1ère année' : $grade.'ème année';
+    }
+
+    /**
+     * The full name of one class, e.g. "3ème année B".
+     */
+    public static function className(int $grade, string $section): string
+    {
+        return self::gradeLabel($grade).' '.$section;
+    }
+
+    /**
+     * Every class the school runs, as [grade, section, name] triples.
+     *
+     * @return list<array{grade: int, section: string, name: string}>
+     */
+    public static function roster(): array
+    {
+        $roster = [];
+
+        foreach (self::SECTIONS as $grade => $sections) {
+            foreach ($sections as $section) {
+                $roster[] = [
+                    'grade' => $grade,
+                    'section' => $section,
+                    'name' => self::className($grade, $section),
+                ];
+            }
+        }
+
+        return $roster;
+    }
 
     /**
      * Define the model's default state.
@@ -37,12 +79,23 @@ class SchoolClassFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->randomElement(array_keys(self::CLASSES));
+        $class = fake()->randomElement(self::roster());
 
         return [
-            'name' => $name,
-            'level' => self::CLASSES[$name],
+            'name' => $class['name'],
+            'level' => (string) $class['grade'],
             'capacity' => fake()->numberBetween(25, 35),
         ];
+    }
+
+    /**
+     * Build a specific grade and section.
+     */
+    public function grade(int $grade, string $section): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'name' => self::className($grade, $section),
+            'level' => (string) $grade,
+        ]);
     }
 }
