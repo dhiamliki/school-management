@@ -4,8 +4,8 @@ namespace Database\Factories;
 
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Support\TunisianNames;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Student>
@@ -20,13 +20,16 @@ class StudentFactory extends Factory
     protected $model = Student::class;
 
     /**
+     * The given names on offer, boys' and girls' together.
+     *
+     * The split itself lives in TunisianNames so the factory can record which
+     * one it drew from - see definition().
+     *
      * @var list<string>
      */
     public const FIRST_NAMES = [
-        'Mohamed', 'Ahmed', 'Youssef', 'Amine', 'Skander',
-        'Aziz', 'Firas', 'Khalil', 'Sami', 'Malek',
-        'Aymen', 'Wael', 'Rania', 'Ines', 'Salma',
-        'Nour', 'Yasmine', 'Mariem', 'Farah', 'Emna',
+        ...TunisianNames::MALE_FIRST_NAMES,
+        ...TunisianNames::FEMALE_FIRST_NAMES,
     ];
 
     /**
@@ -37,14 +40,18 @@ class StudentFactory extends Factory
         'Jebali', 'Bouazizi', 'Hamdi', 'Khelifi', 'Mejri',
         'Nasri', 'Ayari', 'Saidi', 'Baccouche', 'Belhadj',
         'Ferchichi', 'Zouari', 'Kacem', 'Riahi', 'Ouni',
+        'Ben Salah', 'Jelassi', 'Bouden', 'Chaabane', 'Mansour',
+        'Sassi', 'Dridi', 'Hachicha', 'Karoui', 'Laabidi',
+        'Marzouki', 'Neffati', 'Rekik', 'Slimani', 'Tounsi',
+        'Werghi', 'Yahyaoui', 'Zaidi', 'Amri', 'Bacha',
     ];
 
     /**
-     * Addresses already handed out during this process.
+     * Matricules already handed out during this process.
      *
      * @var list<string>
      */
-    protected static array $usedEmails = [];
+    protected static array $usedMatricules = [];
 
     /**
      * Define the model's default state.
@@ -53,49 +60,69 @@ class StudentFactory extends Factory
      */
     public function definition(): array
     {
-        $name = fake()->randomElement(self::FIRST_NAMES).' '.fake()->randomElement(self::LAST_NAMES);
+        $firstName = fake()->randomElement(self::FIRST_NAMES);
+        $name = $firstName.' '.fake()->randomElement(self::LAST_NAMES);
 
         return [
             'name' => $name,
-            'email' => $this->emailFor($name),
-            'birth_date' => fake()->dateTimeBetween('-18 years', '-15 years')->format('Y-m-d'),
+            'matricule' => $this->nextMatricule(),
+            // Read back off the name rather than rolled separately, so the
+            // two can never contradict each other.
+            'gender' => TunisianNames::genderFor($firstName),
+            'birth_date' => self::birthDateForGrade(fake()->numberBetween(1, 6)),
             'school_class_id' => SchoolClassFactory::new(),
         ];
     }
 
     /**
-     * Enrol the student in the given class.
+     * Enrol the student in the given class. Their age follows from the grade:
+     * a pupil starts 1ère année at six and leaves 6ème année at twelve.
      */
     public function forClass(SchoolClass $schoolClass): static
     {
         return $this->state(fn (array $attributes) => [
             'school_class_id' => $schoolClass->id,
+            'birth_date' => self::birthDateForGrade((int) $schoolClass->level ?: 1),
         ]);
     }
 
     /**
-     * Build a school address from the student's name, numbering namesakes.
+     * A birth date putting the pupil in the usual age band for their grade,
+     * with the year either side that repeats and early starts produce.
      */
-    protected function emailFor(string $name): string
+    protected static function birthDateForGrade(int $grade): string
     {
-        $base = Str::slug($name, '.');
-        $email = $base.'@ecole.tn';
+        $age = 5 + max(1, min(6, $grade));
 
-        for ($suffix = 2; $this->emailTaken($email); $suffix++) {
-            $email = $base.$suffix.'@ecole.tn';
-        }
-
-        static::$usedEmails[] = $email;
-
-        return $email;
+        return fake()->dateTimeBetween('-'.($age + 1).' years', '-'.$age.' years')->format('Y-m-d');
     }
 
     /**
-     * Determine whether an address is already in use.
+     * The next free matricule.
+     *
+     * The model derives one from a row id, which does not exist yet at this
+     * point, so the factory counts up from the numbers already issued and
+     * skips any that are taken.
      */
-    protected function emailTaken(string $email): bool
+    protected function nextMatricule(): string
     {
-        return in_array($email, static::$usedEmails, true)
-            || Student::where('email', $email)->exists();
+        $number = count(static::$usedMatricules) + 1;
+
+        while ($this->matriculeTaken($matricule = Student::matriculeFor($number))) {
+            $number++;
+        }
+
+        static::$usedMatricules[] = $matricule;
+
+        return $matricule;
+    }
+
+    /**
+     * Determine whether a matricule is already in use.
+     */
+    protected function matriculeTaken(string $matricule): bool
+    {
+        return in_array($matricule, static::$usedMatricules, true)
+            || Student::where('matricule', $matricule)->exists();
     }
 }
