@@ -18,25 +18,17 @@ class TimetableFactory extends Factory
     protected $model = Timetable::class;
 
     /**
-     * The teaching days of the week.
+     * The calendar lives on the model, which is the single source of truth
+     * shared with the Form Requests and the seeder.
      *
      * @var list<string>
      */
-    public const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
+    public const DAYS = Timetable::DAYS;
 
     /**
-     * The school hours, as start and end pairs.
-     *
      * @var list<array{string, string}>
      */
-    public const SLOTS = [
-        ['08:00', '09:00'],
-        ['09:00', '10:00'],
-        ['10:15', '11:15'],
-        ['11:15', '12:15'],
-        ['14:00', '15:00'],
-        ['15:00', '16:00'],
-    ];
+    public const SLOTS = Timetable::SLOTS;
 
     /**
      * Define the model's default state.
@@ -45,11 +37,14 @@ class TimetableFactory extends Factory
      */
     public function definition(): array
     {
-        [$startTime, $endTime] = fake()->randomElement(self::SLOTS);
+        $day = fake()->randomElement(Timetable::DAYS);
+
+        // A half day only ever runs its morning slots.
+        [$startTime, $endTime] = fake()->randomElement(Timetable::slotsFor($day));
 
         return [
             'lesson_id' => LessonFactory::new(),
-            'day_of_week' => fake()->randomElement(self::DAYS),
+            'day_of_week' => $day,
             'start_time' => $startTime,
             'end_time' => $endTime,
             'room' => 'Salle '.fake()->numberBetween(101, 210),
