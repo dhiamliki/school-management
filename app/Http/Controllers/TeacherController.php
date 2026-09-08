@@ -2,64 +2,65 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreTeacherRequest;
+use App\Http\Requests\UpdateTeacherRequest;
+use App\Http\Resources\TeacherResource;
 use App\Models\Teacher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return response()->json(Teacher::latest()->get());
+        return TeacherResource::collection(
+            Teacher::latest()->orderByDesc('id')->paginate($this->perPage($request))->withQueryString()
+        );
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreTeacherRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', Rule::unique('teachers', 'email')],
-            'phone' => ['nullable', 'string'],
-            'subject' => ['nullable', 'string'],
-        ]);
+        $teacher = Teacher::create($request->validated());
 
-        $teacher = Teacher::create($validated);
-
-        return response()->json($teacher, Response::HTTP_CREATED);
+        return (new TeacherResource($teacher))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Teacher $teacher): JsonResponse
+    public function show(Teacher $teacher): TeacherResource
     {
-        $teacher->load('lessons');
+        // The lessons carry their class and their slots, which is what the
+        // profile builds the weekly timetable from. The classes served come
+        // back separately, de-duplicated: a teacher normally has several
+        // lessons with the same class and the header lists each one once.
+        $teacher->load([
+            'lessons.schoolClass',
+            'lessons.timetables',
+            'schoolClasses' => fn ($query) => $query->select('school_classes.*')->distinct()->orderBy('name'),
+        ])->loadCount('lessons');
 
-        return response()->json($teacher);
+        return new TeacherResource($teacher);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Teacher $teacher): JsonResponse
+    public function update(UpdateTeacherRequest $request, Teacher $teacher): TeacherResource
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', Rule::unique('teachers', 'email')->ignore($teacher)],
-            'phone' => ['nullable', 'string'],
-            'subject' => ['nullable', 'string'],
-        ]);
+        $teacher->update($request->validated());
 
-        $teacher->update($validated);
-
-        return response()->json($teacher);
+        return new TeacherResource($teacher);
     }
 
     /**

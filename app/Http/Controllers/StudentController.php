@@ -2,64 +2,104 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreStudentRequest;
+use App\Http\Requests\UpdateStudentRequest;
+use App\Http\Resources\StudentResource;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
     /**
+     * How many recent marks the profile shows.
+     */
+    private const HISTORY_LENGTH = 15;
+
+    /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return response()->json(Student::with('schoolClass')->latest()->get());
+        // ?school_class_id= lets a caller ask for one class's roster instead
+        // of paging the whole school, which the marking grid relies on.
+        $filters = $request->validate([
+            'school_class_id' => ['sometimes', 'exists:school_classes,id'],
+        ]);
+
+        return StudentResource::collection(
+            Student::with('schoolClass')
+                ->withAttendanceSummary()
+                ->when(
+                    isset($filters['school_class_id']),
+                    fn ($query) => $query->where('school_class_id', $filters['school_class_id']),
+                )
+                ->latest()
+                ->orderByDesc('id')
+                ->paginate($this->perPage($request))
+                ->withQueryString()
+        );
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreStudentRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', Rule::unique('students', 'email')],
-            'birth_date' => ['nullable', 'date'],
-            'school_class_id' => ['nullable', 'exists:school_classes,id'],
-        ]);
+        $student = Student::create($request->validated());
 
-        $student = Student::create($validated);
+        // Enrolling staff should not have to invent a school number: unless
+        // one was typed, the pupil is numbered from the row id they just got.
+        if (blank($student->matricule)) {
+            $student->update(['matricule' => Student::matriculeFor($student->id)]);
+        }
 
-        return response()->json($student->load('schoolClass'), Response::HTTP_CREATED);
+        // The tallies are loaded so a write answers with the same shape the
+        // index does. They are all zero on a pupil enrolled a moment ago, but
+        // an absent block and a zeroed one are different things to a client,
+        // and this costs four counts against one row.
+        $student->load('schoolClass')->loadAttendanceSummary();
+
+        return (new StudentResource($student))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Student $student): JsonResponse
+    public function show(Student $student): StudentResource
     {
-        $student->load('schoolClass');
+        // Everything the profile page needs, in one request: the class and
+        // the week it teaches, the tallies, and the latest marks.
+        $student->load([
+            'schoolClass',
+            'schoolClass.lessons.teacher',
+            'schoolClass.lessons.timetables',
+            'attendances' => fn ($query) => $query
+                ->with('lesson')
+                ->orderByDesc('date')
+                ->orderByDesc('id')
+                ->limit(self::HISTORY_LENGTH),
+        ])->loadAttendanceSummary();
 
-        return response()->json($student);
+        return new StudentResource($student);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Student $student): JsonResponse
+    public function update(UpdateStudentRequest $request, Student $student): StudentResource
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', Rule::unique('students', 'email')->ignore($student)],
-            'birth_date' => ['nullable', 'date'],
-            'school_class_id' => ['nullable', 'exists:school_classes,id'],
-        ]);
+        $student->update($request->validated());
 
-        $student->update($validated);
+        // Loaded for the same reason as in store(): the edited pupil comes
+        // back in the shape the list they came from uses.
+        $student->load('schoolClass')->loadAttendanceSummary();
 
-        return response()->json($student->load('schoolClass'));
+        return new StudentResource($student);
     }
 
     /**

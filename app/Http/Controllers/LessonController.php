@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreLessonRequest;
+use App\Http\Requests\UpdateLessonRequest;
+use App\Http\Resources\LessonResource;
 use App\Models\Lesson;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class LessonController extends Controller
@@ -12,53 +16,47 @@ class LessonController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return response()->json(Lesson::with(['teacher', 'schoolClass'])->latest()->get());
+        return LessonResource::collection(
+            Lesson::with(['teacher', 'schoolClass'])
+                ->latest()
+                ->orderByDesc('id')
+                ->paginate($this->perPage($request))
+                ->withQueryString()
+        );
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreLessonRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'subject' => ['nullable', 'string'],
-            'teacher_id' => ['nullable', 'exists:teachers,id'],
-            'school_class_id' => ['nullable', 'exists:school_classes,id'],
-        ]);
+        $lesson = Lesson::create($request->validated());
 
-        $lesson = Lesson::create($validated);
-
-        return response()->json($lesson->load(['teacher', 'schoolClass']), Response::HTTP_CREATED);
+        return (new LessonResource($lesson->load(['teacher', 'schoolClass'])))
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Lesson $lesson): JsonResponse
+    public function show(Lesson $lesson): LessonResource
     {
         $lesson->load(['teacher', 'schoolClass', 'timetables']);
 
-        return response()->json($lesson);
+        return new LessonResource($lesson);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Lesson $lesson): JsonResponse
+    public function update(UpdateLessonRequest $request, Lesson $lesson): LessonResource
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'subject' => ['nullable', 'string'],
-            'teacher_id' => ['nullable', 'exists:teachers,id'],
-            'school_class_id' => ['nullable', 'exists:school_classes,id'],
-        ]);
+        $lesson->update($request->validated());
 
-        $lesson->update($validated);
-
-        return response()->json($lesson->load(['teacher', 'schoolClass']));
+        return new LessonResource($lesson->load(['teacher', 'schoolClass']));
     }
 
     /**
