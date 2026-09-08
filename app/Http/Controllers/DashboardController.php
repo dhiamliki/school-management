@@ -18,22 +18,12 @@ use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
-    /**
-     * How many activity entries the widget shows.
-     */
     private const ACTIVITY_LIMIT = 15;
 
-    /**
-     * How many entries any one table may contribute. Without a cap the table
-     * that happened to be written last - attendance, at 15k rows sharing a
-     * seed timestamp - would fill the whole list on its own.
-     */
+    /** Per table, so the one written last does not fill the list on its own. */
     private const ACTIVITY_PER_SOURCE = 5;
 
-    /**
-     * How many teaching days the weekly attendance chart covers. Six, not
-     * seven: the school week runs Lundi to Samedi.
-     */
+    /** Lundi to Samedi. */
     private const ATTENDANCE_WEEK_DAYS = 6;
 
     /**
@@ -52,13 +42,8 @@ class DashboardController extends Controller
     ];
 
     /**
-     * Every headline figure the dashboard shows, in one request.
-     *
-     * The page used to read each of these from the `meta.total` of a separate
-     * paginated index call - seven round trips to learn seven integers. Each
-     * request carries the full framework bootstrap, so on a single-worker dev
-     * server they queued up into seconds of waiting. Counting them here costs
-     * one trip and a handful of COUNT queries.
+     * Every headline figure in one request. The page used to read each from the
+     * meta.total of a separate index call: seven round trips for seven integers.
      */
     public function stats(): JsonResponse
     {
@@ -104,12 +89,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * The small figures the stat tiles carry as a badge.
-     *
-     * Every one is derived from something the school already records. There is
-     * deliberately nothing here for the Cours tile: no figure about lessons
-     * says anything a headline count does not, and an invented one would be
-     * worse than an empty corner.
+     * The badge figures on the stat tiles. Nothing for the Cours tile: no figure
+     * about lessons says more than the count itself.
      *
      * @return array{class_occupancy: float|null, teacher_subjects: int}
      */
@@ -131,11 +112,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Attendance across the last week of teaching days, oldest first.
-     *
-     * Counts every mark on the date rather than only those tied to a lesson,
-     * so a full-day absence - which carries no lesson_id - is not quietly
-     * dropped from the chart.
+     * Counts every mark on the date, not only those tied to a lesson, so a
+     * full-day absence is not dropped from the chart.
      */
     public function attendanceWeek(): JsonResponse
     {
@@ -172,11 +150,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * How the enrolled pupils divide by gender.
-     *
-     * "unknown" is a real bucket, not a rounding error: the column is
-     * nullable, and a school that has not recorded the field should see that
-     * said plainly rather than have its pupils sorted silently onto one side.
+     * "unknown" is a real bucket: the column is nullable, and a school that has
+     * not recorded it should see that said rather than have pupils sorted.
      *
      * @return array{male: int, female: int, unknown: int, total: int}
      */
@@ -230,11 +205,7 @@ class DashboardController extends Controller
         ];
     }
 
-    /**
-     * The most recent teaching day strictly before the given date. The school
-     * is shut on Sunday, so that day is stepped over rather than reported as a
-     * day on which nobody attended.
-     */
+    /** Steps over Sunday rather than reporting a day nobody attended. */
     private function previousSchoolDay(Carbon $date): Carbon
     {
         $previous = $date->copy()->subDay();
@@ -247,10 +218,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * Today's lessons, earliest first.
-     *
-     * The weekday is resolved server-side so the answer cannot disagree with
-     * the timetable because of the browser's timezone.
+     * Weekday resolved server-side so it cannot disagree with the browser's
+     * timezone.
      */
     public function todaySchedule(): JsonResponse
     {
@@ -292,13 +261,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * A rough "what changed lately" feed.
-     *
-     * There is no audit log, so this is reconstructed from the created_at and
-     * updated_at columns the five domain tables already carry. That means it
-     * can show additions and edits but never deletions, and an edit hides the
-     * creation that came before it. Good enough to show the school is being
-     * worked on; not an audit trail.
+     * Reconstructed from created_at and updated_at, so it shows additions and
+     * edits but never deletions. Not an audit trail.
      */
     public function recentActivity(Request $request): JsonResponse
     {
@@ -343,16 +307,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * Order the merged entries newest first, interleaving the sources when
-     * their timestamps tie.
-     *
-     * The tie case is the normal one here: a freshly seeded school writes
-     * every table within the same second. Falling back to the row id would
-     * compare a student id against a lesson id - which says nothing about
-     * recency - and let whichever table happened to get the high ids push the
-     * others out of the list entirely. Ranking each source separately and
-     * breaking ties on that rank interleaves them instead, so every kind of
-     * change is represented while real timestamp differences still win.
+     * Newest first, interleaving sources when timestamps tie, which is the
+     * normal case on a fresh seed. Ranking each source separately stops one
+     * table pushing the others out.
      *
      * @param  Collection<int, array<string, mixed>>  $entries
      * @return list<array<string, mixed>>
@@ -379,8 +336,6 @@ class DashboardController extends Controller
     }
 
     /**
-     * The most recently touched rows of one table, as activity entries.
-     *
      * @param  Builder<covariant Model>  $query
      * @param  callable(mixed): string  $describe
      * @return Collection<int, array<string, mixed>>
@@ -438,9 +393,7 @@ class DashboardController extends Controller
             ]);
     }
 
-    /**
-     * "Nouvel élève", "Nouvelle classe" - French needs the article to agree.
-     */
+    /** "Nouvel élève", "Nouvelle classe" - French needs the article to agree. */
     private function createdLabel(string $noun): string
     {
         return match ($noun) {
@@ -453,8 +406,8 @@ class DashboardController extends Controller
     }
 
     /**
-     * "Élève modifié", "Classe modifiée". mb_convert_case, not ucfirst: the
-     * latter works a byte at a time and would leave a leading 'é' lowercase.
+     * mb_convert_case, not ucfirst: the latter works a byte at a time and would
+     * mangle a leading accent.
      */
     private function updatedLabel(string $noun): string
     {

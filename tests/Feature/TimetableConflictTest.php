@@ -11,10 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Nothing may put a teacher, a room or a class in two places at once.
- *
- * The interesting cases are the near misses: back-to-back slots must stay
- * legal, and a slot must never conflict with itself.
+ * The interesting cases are the near misses: back-to-back slots, the same
+ * hour on another day, a slot against itself on update.
  */
 class TimetableConflictTest extends TestCase
 {
@@ -41,9 +39,6 @@ class TimetableConflictTest extends TestCase
         ]);
     }
 
-    /**
-     * Place an existing slot, by default the shared lesson at 08:00-09:00.
-     */
     private function existing(string $start = '08:00', string $end = '09:00', ?Lesson $lesson = null, string $room = 'Salle 106'): Timetable
     {
         return Timetable::factory()->at('Lundi', $start, $end)->create([
@@ -52,9 +47,6 @@ class TimetableConflictTest extends TestCase
         ]);
     }
 
-    /**
-     * A lesson sharing nothing with the fixture: its own teacher and class.
-     */
     private function unrelatedLesson(): Lesson
     {
         return Lesson::factory()->create([
@@ -157,9 +149,7 @@ class TimetableConflictTest extends TestCase
         $this->assertSame(2, Timetable::count());
     }
 
-    /**
-     * And the mirror image: a slot ending exactly when another begins.
-     */
+    /** And the mirror image: a slot ending exactly when another begins. */
     public function test_a_slot_ending_where_another_starts_is_allowed(): void
     {
         $this->existing('09:00', '10:00');
@@ -189,9 +179,7 @@ class TimetableConflictTest extends TestCase
         ]))->assertCreated();
     }
 
-    /**
-     * Two slots that record no room must not collide on the empty value.
-     */
+    /** Two slots that record no room must not collide on the empty value. */
     public function test_slots_without_a_room_do_not_collide(): void
     {
         $this->existing(room: '');
@@ -230,9 +218,6 @@ class TimetableConflictTest extends TestCase
         $this->assertSame('14:00:00', $slot->fresh()->start_time, 'the slot should not have moved');
     }
 
-    /**
-     * One save can breach more than one rule at a time.
-     */
     public function test_a_slot_can_report_several_kinds_of_conflict(): void
     {
         $this->existing();

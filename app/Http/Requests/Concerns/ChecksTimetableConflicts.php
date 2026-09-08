@@ -6,24 +6,13 @@ use App\Models\Lesson;
 use App\Support\TimetableConflictDetector;
 use Illuminate\Contracts\Validation\Validator;
 
-/**
- * Rejects a timetable write that would put a teacher, a room or a class in
- * two places at once.
- *
- * Shared by the store and update requests so both enforce the same rule; the
- * only difference is that an update excludes the row being edited, which
- * otherwise always clashes with itself.
- */
+/** Rejects a timetable write that would double-book a teacher, room or class. */
 trait ChecksTimetableConflicts
 {
-    /**
-     * Run the conflict check once the field-level rules have passed.
-     */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            // Nothing to compare against if the basics are already wrong: the
-            // day, the times or the lesson could all be missing or malformed.
+            // Nothing to compare against if the field rules already failed.
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
@@ -41,8 +30,7 @@ trait ChecksTimetableConflicts
             );
 
             foreach ($conflicts as $conflict) {
-                // Attached to the field the user would change to resolve it,
-                // so the form shows each message next to the right input.
+                // Attached to the field the user would change to fix it.
                 $validator->errors()->add(
                     match ($conflict['kind']) {
                         TimetableConflictDetector::ROOM => 'room',
@@ -55,9 +43,6 @@ trait ChecksTimetableConflicts
         });
     }
 
-    /**
-     * The row this write must not be compared against. Null when creating.
-     */
     protected function conflictExclusionId(): ?int
     {
         $timetable = $this->route('timetable');

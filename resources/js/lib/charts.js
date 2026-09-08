@@ -1,11 +1,5 @@
-/**
- * The Chart.js pieces this app actually draws with.
- *
- * Chart.js ships a bundle that registers every controller, scale and plugin it
- * has. Registering only what the dashboard uses keeps the rest out of the
- * build - and makes it obvious that adding a new kind of chart is a deliberate
- * act rather than something that happens by accident.
- */
+// Only the Chart.js pieces the dashboard draws with, so the rest stays out of
+// the build.
 import {
     ArcElement,
     BarController,
@@ -27,12 +21,9 @@ Chart.register(
     Tooltip,
 );
 
-// No legend default is set here, and none can be: the Legend plugin is not in
-// the register() call above, so Chart.defaults.plugins.legend does not exist
-// and writing to it throws while this module is still evaluating - which takes
-// the whole app down with it, not just the charts. Legends on this dashboard
-// are plain HTML beside each chart, so they stay selectable text and inherit
-// the app's type.
+// Do not set a legend default here. Legend is not registered above, so
+// Chart.defaults.plugins.legend does not exist and writing to it throws while
+// this module evaluates, taking the whole app down. Legends are plain HTML.
 Chart.defaults.font.family =
     "'Switzer', 'Segoe UI', system-ui, -apple-system, sans-serif";
 Chart.defaults.font.size = 12;

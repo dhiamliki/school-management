@@ -8,9 +8,6 @@ use Illuminate\Validation\Rule;
 
 class StoreAttendanceRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
@@ -33,13 +30,8 @@ class StoreAttendanceRequest extends FormRequest
     }
 
     /**
-     * The database refuses a second mark for the same pupil, lesson and day.
-     * Checking it here turns that into a 422 the form can show instead of the
-     * integrity error the insert would otherwise raise.
-     *
-     * Full-day marks (no lesson) are exempt on purpose: they are allowed to
-     * repeat within a day, which is why the column is nullable in the first
-     * place.
+     * The unique index already refuses a duplicate mark; checking here turns
+     * a 500 into a 422.
      */
     protected function uniqueMark(): mixed
     {

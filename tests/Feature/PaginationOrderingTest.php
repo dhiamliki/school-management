@@ -14,11 +14,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Pagination has to be stable. The index endpoints order by created_at, which
- * only has second resolution, so rows written in the same second tie. Without
- * a tiebreak the database is free to return tied rows in any order, and a row
- * can then appear on two pages or on none. Every test here creates rows with
- * an identical created_at on purpose.
+ * The index endpoints order by created_at, which has second resolution, so
+ * a seeded batch shares a timestamp. Ties break on id or paging drifts.
  */
 class PaginationOrderingTest extends TestCase
 {
@@ -47,9 +44,7 @@ class PaginationOrderingTest extends TestCase
         parent::tearDown();
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
+    /** @return array<string, array{string}> */
     public static function resourceProvider(): array
     {
         return [
@@ -90,9 +85,7 @@ class PaginationOrderingTest extends TestCase
         return $rows->pluck('id')->all();
     }
 
-    /**
-     * @return array{ids: list<int>, meta: array<string, mixed>}
-     */
+    /** @return array{ids: list<int>, meta: array<string, mixed>} */
     private function fetchPage(string $endpoint, int $page): array
     {
         $response = $this->getJson("/api/{$endpoint}?page={$page}")->assertOk();
@@ -164,9 +157,7 @@ class PaginationOrderingTest extends TestCase
         }
     }
 
-    /**
-     * Walking every page must visit each row exactly once, at any page size.
-     */
+    /** Walking every page must visit each row exactly once, at any page size. */
     #[DataProvider('resourceProvider')]
     public function test_walking_all_pages_visits_every_row_once(string $endpoint): void
     {

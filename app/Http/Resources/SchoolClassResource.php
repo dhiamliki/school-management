@@ -6,19 +6,10 @@ use App\Models\SchoolClass;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * @mixin SchoolClass
- */
+/** @mixin SchoolClass */
 class SchoolClassResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * Every field is listed explicitly so that new columns are not exposed
-     * by accident.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
@@ -30,8 +21,7 @@ class SchoolClassResource extends JsonResource
             'updated_at' => $this->updated_at,
             'students' => StudentResource::collection($this->whenLoaded('students')),
             'lessons' => LessonResource::collection($this->whenLoaded('lessons')),
-            // Present only when the tallies were loaded, which the index
-            // deliberately does not do.
+            // Only when preloaded; nesting this would otherwise count per row.
             'attendance' => $this->when($this->hasAttendanceSummary(), fn () => [
                 'rate' => $this->attendanceRate(),
                 'records' => (int) $this->attendance_records_count,

@@ -10,35 +10,19 @@ import AppIcon from '../components/AppIcon.vue';
 
 const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
-// Only for a slot whose lesson has no teacher on it - a real gap in the
-// data, not a colour we ran out of.
+// Only for a slot whose lesson has no teacher, a real gap in the data.
 const neutralColor = '#6b7684';
 
-/**
- * Where the first teacher's hue starts. Off pure red so that no swatch lands
- * on the danger colour, which means something else everywhere in the app.
- */
+// Off pure red, which means danger everywhere else in the app.
 const HUE_ORIGIN = 18;
 
-/**
- * Saturation, and the lightness band the generated colours are kept inside.
- *
- * The band matters: a slot tints its background from this colour and draws a
- * 3px bar in it, so a swatch that came out near-white would vanish against
- * the cell and a near-black one would read as a border rather than a colour.
- */
+// The lightness band matters: near-white vanishes against the cell, near-black
+// reads as a border.
 const SWATCH_SATURATION = 62;
 const SWATCH_LIGHTNESS = 42;
 const YELLOW_CORRECTION = 8;
 
-/**
- * A colour for the teacher sitting at `index` in a roster of `total`.
- *
- * Hues are spread evenly around the wheel and sized to the roster, so the set
- * is as far apart as it can be for however many teachers the school has -
- * where the old fixed list of ten simply ran out and dropped everyone after
- * the tenth into the same grey.
- */
+// Hues spread evenly and sized to the roster, so a fixed list cannot run out.
 function hueFor(index, total) {
     return (HUE_ORIGIN + (index * 360) / Math.max(total, 1)) % 360;
 }
@@ -46,11 +30,8 @@ function hueFor(index, total) {
 function swatchFor(index, total) {
     const hue = hueFor(index, total);
 
-    // Yellow and green read much lighter than blue and violet at the same HSL
-    // lightness - a plain fixed lightness gives a set that looks evenly
-    // spaced on paper but has washed-out swatches around 60deg. Darkening
-    // that side of the wheel keeps every swatch at a similar weight against
-    // white, and keeps the slot text above it legible.
+    // Yellow and green read lighter than blue at the same HSL lightness, so
+    // that side of the wheel is darkened to keep every swatch a similar weight.
     const towardsYellow = Math.max(0, Math.cos(((hue - 60) * Math.PI) / 180));
     const lightness = SWATCH_LIGHTNESS - YELLOW_CORRECTION * towardsYellow;
 
@@ -58,18 +39,13 @@ function swatchFor(index, total) {
 }
 
 /**
- * Hand out the evenly spaced hues in a scattered order rather than in a line.
- *
- * With 28 teachers, consecutive hues are under 13deg apart - neighbours in
- * the legend would be all but the same colour, which is exactly where telling
- * them apart matters most. Stepping through the set by a stride coprime with
- * its size visits every hue exactly once, so the colours stay evenly spread,
- * but puts a wide gap between entries that sit next to each other.
+ * Scattered rather than sequential: with 29 teachers consecutive hues are under
+ * 13deg apart, and neighbours in the legend are where telling them apart
+ * matters most. A stride coprime with the set size visits every hue once.
  */
 function scatterStride(total) {
-    // Roughly the golden-ratio fraction of the set, then walked upwards to the
-    // first value that is coprime with it. Coprimality is what guarantees the
-    // walk is a permutation rather than a short cycle that repeats colours.
+    // Golden-ratio fraction, walked up to the first coprime value. Coprimality
+    // is what makes the walk a permutation rather than a repeating cycle.
     let stride = Math.max(1, Math.round(total * 0.382));
 
     while (stride < total && greatestCommonDivisor(stride, total) !== 1) {
@@ -83,25 +59,17 @@ function greatestCommonDivisor(a, b) {
     return b === 0 ? a : greatestCommonDivisor(b, a % b);
 }
 
-// The grid has to show a whole week at once, so this page asks for the
-// whole (bounded) timetable instead of paginating. If a school ever outgrows
-// that ceiling the template warns rather than dropping slots silently.
+// The grid shows a whole week, so it asks for the whole bounded timetable.
 const { items, loading, meta, saving, errors, failure, load, save, destroy } =
     useResource('/timetables', { perPage: 600 });
 
 const lessons = ref([]);
 const teachers = ref([]);
 const schoolClasses = ref([]);
-// Reported separately from the grid's own failure: the week can render fine
-// while the lists behind the slot form do not, and the two want different
-// wording.
+// Separate from the grid's own failure: the week can render while these do not.
 const optionsFailure = ref('');
 
-/**
- * Which week the page is showing: the whole school, one class, or one
- * teacher. Kept as an explicit mode rather than two selects that clear each
- * other, so the page never sits in an ambiguous half-filtered state.
- */
+// An explicit mode, so the page is never in an ambiguous half-filtered state.
 const viewMode = ref('all');
 const filterClassId = ref('');
 const filterTeacherId = ref('');
@@ -112,15 +80,7 @@ const VIEW_MODES = [
     { value: 'teacher', label: 'Par enseignant' },
 ];
 
-/**
- * The entries the grid shows. Filtered here rather than server-side: the whole
- * (bounded) timetable is already loaded, so a second request would buy
- * nothing.
- *
- * Every view renders through this, so "Par classe" and "Par enseignant" are
- * the same grid as "Vue générale" with fewer entries in it - not a second
- * layout with its own look.
- */
+// Filtered client-side: the whole bounded timetable is already loaded.
 const visibleItems = computed(() => {
     if (viewMode.value === 'class') {
         return filterClassId.value
@@ -214,12 +174,8 @@ const cells = computed(() => {
 
 const offGrid = computed(() => visibleItems.value.filter((entry) => !days.includes(entry.day_of_week)));
 
-/**
- * The last slot each day actually teaches. Samedi is a half day, so its
- * afternoon rows are not empty cells waiting to be filled - the school is
- * shut. Deriving this from the data rather than hardcoding the hours keeps
- * the grid honest if the timetable ever changes.
- */
+// Derived from the data, so Samedi afternoon greys out rather than reading as
+// empty cells waiting to be filled.
 const lastSlotByDay = computed(() => {
     const latest = new Map();
 
@@ -235,10 +191,7 @@ const lastSlotByDay = computed(() => {
     return latest;
 });
 
-/**
- * Whether a cell falls outside its day's teaching hours. A day with no slots
- * at all is left blank rather than greyed out wholesale.
- */
+// A day with no slots at all is left blank rather than greyed out wholesale.
 function closed(day, slot) {
     const last = lastSlotByDay.value.get(day);
 
@@ -247,12 +200,7 @@ function closed(day, slot) {
 
 const rosterOrder = computed(() => [...teachers.value].sort((a, b) => a.id - b.id));
 
-/**
- * One distinct colour per teacher, generated from the size of the roster.
- *
- * Keyed off the whole roster rather than whoever is on screen, so a teacher
- * keeps the same colour when the grid is filtered down to one class.
- */
+// Keyed off the whole roster, so a teacher keeps their colour when filtered.
 const teacherColors = computed(() => {
     const roster = rosterOrder.value;
     const total = roster.length;
@@ -440,9 +388,6 @@ onMounted(async () => {
         teachers.value = unwrapList(teacherResponse.data);
         schoolClasses.value = unwrapList(classResponse.data);
     } catch (error) {
-        // Left unhandled, this rejected into nothing and the slot form opened
-        // with an empty list of lessons and no explanation for it. The view
-        // filters read the same two lists, so they empty out together.
         optionsFailure.value =
             "Impossible de charger les cours, les enseignants et les classes. Rechargez la page avant de modifier l'emploi du temps.";
     }

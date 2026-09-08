@@ -6,11 +6,8 @@ use App\Models\Timetable;
 use Illuminate\Support\Collection;
 
 /**
- * Finds the slots a proposed timetable entry would collide with.
- *
- * Three things cannot be in two places at once: a teacher, a room, and a
- * class. Each is checked independently, so a single save can report more than
- * one kind of clash.
+ * Three things cannot be in two places at once: a teacher, a room and a
+ * class. Each is checked separately, so one save can report several clashes.
  */
 class TimetableConflictDetector
 {
@@ -20,12 +17,7 @@ class TimetableConflictDetector
 
     public const SCHOOL_CLASS = 'school_class';
 
-    /**
-     * Every conflict a proposed slot would create, in the order the kinds are
-     * listed above. An empty list means the slot is free to save.
-     *
-     * @return list<array{kind: string, message: string, timetable_id: int, day_of_week: string, start_time: string, end_time: string, room: string|null, lesson: string|null, teacher: string|null, school_class: string|null}>
-     */
+    /** @return list<array{kind: string, message: string, timetable_id: int, day_of_week: string, start_time: string, end_time: string, room: string|null, lesson: string|null, teacher: string|null, school_class: string|null}> */
     public function conflicts(
         string $dayOfWeek,
         string $startTime,
@@ -50,8 +42,7 @@ class TimetableConflictDetector
                 $conflicts[] = $this->describe(self::TEACHER, $slot);
             }
 
-            // A null room is "no room recorded", not a shared space, so two
-            // slots without a room never clash on it.
+            // A null room is "no room recorded", not a shared space.
             if (filled($room) && $this->sameRoom($slot->room, $room)) {
                 $conflicts[] = $this->describe(self::ROOM, $slot);
             }
@@ -65,18 +56,13 @@ class TimetableConflictDetector
     }
 
     /**
-     * The slots sharing this day whose time range overlaps the proposed one.
-     *
-     * Half-open ranges: [start, end). Two overlap when each starts before the
-     * other ends, which leaves back-to-back slots (08:00-09:00 then
-     * 09:00-10:00) free of each other.
+     * Half-open ranges, so 08:00-09:00 and 09:00-10:00 do not collide.
      *
      * @return Collection<int, Timetable>
      */
     private function overlapping(string $dayOfWeek, string $startTime, string $endTime, ?int $excludeId): Collection
     {
-        // Both sides must be in the column's own format - see
-        // Timetable::normaliseTime() for why text comparison demands it.
+        // Both sides in the column's format; see Timetable::normaliseTime().
         $start = Timetable::normaliseTime($startTime);
         $end = Timetable::normaliseTime($endTime);
 
@@ -89,9 +75,7 @@ class TimetableConflictDetector
             ->get();
     }
 
-    /**
-     * Room names are free text, so compare them the way a human would.
-     */
+    /** Room names are free text, so compare them the way a human would. */
     private function sameRoom(?string $existing, string $proposed): bool
     {
         if (blank($existing)) {
@@ -101,11 +85,7 @@ class TimetableConflictDetector
         return mb_strtolower(trim($existing)) === mb_strtolower(trim($proposed));
     }
 
-    /**
-     * Turn a clashing slot into a message a form can show as-is.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function describe(string $kind, Timetable $slot): array
     {
         $lesson = $slot->lesson;
@@ -118,9 +98,7 @@ class TimetableConflictDetector
         $title = $lesson?->title ?? 'cours supprimé';
 
         $message = match ($kind) {
-            // Neutral phrasing rather than "assigné(e)": the roster records no
-            // gender, and guessing one from a name would be wrong as often as
-            // it is right.
+            // Neutral phrasing: the roster records no gender for teachers.
             self::TEACHER => sprintf(
                 'Conflit : %s a déjà un cours %s (%s, %s).',
                 $teacher ?? 'cet enseignant',

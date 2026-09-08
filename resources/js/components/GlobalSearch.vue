@@ -4,13 +4,6 @@ import { useRouter } from 'vue-router';
 import api from '../lib/api';
 import AppIcon from './AppIcon.vue';
 
-/**
- * The header search: a jump list across pupils, teachers and classes.
- *
- * Backed by a real endpoint rather than being decorative - a search box that
- * does nothing is worse than no search box, because it invites the one thing
- * it cannot do.
- */
 const router = useRouter();
 
 const term = ref('');
@@ -49,9 +42,7 @@ async function run() {
             failed.value = false;
         }
     } catch (error) {
-        // A failed lookup is not worth interrupting the page for, but it must
-        // not be reported as an empty result either: "aucun résultat" about a
-        // pupil who does exist is worse than saying the search itself failed.
+        // Never report a failure as an empty result.
         if (mine === token) {
             results.value = [];
             failed.value = true;

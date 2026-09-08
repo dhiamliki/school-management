@@ -5,9 +5,7 @@ namespace Database\Factories;
 use App\Models\Teacher;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Teacher>
- */
+/** @extends Factory<Teacher> */
 class TeacherFactory extends Factory
 {
     /**
@@ -51,9 +49,6 @@ class TeacherFactory extends Factory
         ];
     }
 
-    /**
-     * Indicate the subject the teacher is responsible for.
-     */
     public function subject(string $subject): static
     {
         return $this->state(fn (array $attributes) => [
@@ -61,9 +56,6 @@ class TeacherFactory extends Factory
         ]);
     }
 
-    /**
-     * Build a Tunisian mobile number.
-     */
     protected function tunisianPhone(): string
     {
         $prefix = fake()->randomElement([

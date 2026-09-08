@@ -12,9 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class AttendanceSeeder extends Seeder
 {
-    /**
-     * How many school days of history to lay down.
-     */
     protected int $schoolDays = Attendance::RECENT_DAYS;
 
     /**
@@ -101,9 +98,6 @@ class AttendanceSeeder extends Seeder
         $this->flush($rows);
     }
 
-    /**
-     * Pick a status for one lesson.
-     */
     private function roll(float $absentChance, float $lateChance): string
     {
         $draw = fake()->randomFloat(4, 0, 1);

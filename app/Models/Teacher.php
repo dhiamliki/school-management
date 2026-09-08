@@ -23,13 +23,7 @@ class Teacher extends Model
         return $this->hasMany(Lesson::class);
     }
 
-    /**
-     * The classes this teacher serves, reached through their lessons.
-     *
-     * A teacher usually has several lessons with the same class, so callers
-     * that want a roster of distinct classes should select distinct - see
-     * TeacherController::show().
-     */
+    /** Reached through their lessons, so distinct() matters. */
     public function schoolClasses(): HasManyThrough
     {
         return $this->hasManyThrough(

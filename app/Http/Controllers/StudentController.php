@@ -13,14 +13,8 @@ use Illuminate\Http\Response;
 
 class StudentController extends Controller
 {
-    /**
-     * How many recent marks the profile shows.
-     */
     private const HISTORY_LENGTH = 15;
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request): AnonymousResourceCollection
     {
         // ?school_class_id= lets a caller ask for one class's roster instead
@@ -43,9 +37,6 @@ class StudentController extends Controller
         );
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreStudentRequest $request): JsonResponse
     {
         $student = Student::create($request->validated());
@@ -67,9 +58,6 @@ class StudentController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Student $student): StudentResource
     {
         // Everything the profile page needs, in one request: the class and
@@ -88,9 +76,6 @@ class StudentController extends Controller
         return new StudentResource($student);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateStudentRequest $request, Student $student): StudentResource
     {
         $student->update($request->validated());
@@ -102,9 +87,6 @@ class StudentController extends Controller
         return new StudentResource($student);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Student $student): Response
     {
         $student->delete();

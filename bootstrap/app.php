@@ -14,8 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Let the same-origin SPA authenticate against /api/* with the
-        // session cookie instead of a bearer token.
+        // Session cookie auth for /api/*, not bearer tokens.
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -23,11 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*'),
         );
 
-        // The throttle middleware raises this with an untranslated "Too many
-        // requests.", which would be the one English sentence left in an
-        // otherwise French interface. Rendered here rather than per route so
-        // every throttled endpoint answers the same way, and so the wait the
-        // middleware already computed is passed on instead of guessed at.
+        // The middleware's own message is untranslated English. Rendered here
+        // so every throttled endpoint answers the same way.
         $exceptions->render(function (ThrottleRequestsException $exception, Request $request) {
             if (! $request->is('api/*')) {
                 return null;

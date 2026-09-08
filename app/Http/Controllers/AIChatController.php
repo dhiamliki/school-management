@@ -19,19 +19,10 @@ use Throwable;
 
 class AIChatController extends Controller
 {
-    /**
-     * How many previous turns of the conversation are replayed to the model.
-     */
     private const HISTORY_TURNS = 10;
 
-    /**
-     * Seconds to wait on the Gemini API before giving up.
-     */
     private const TIMEOUT_SECONDS = 15;
 
-    /**
-     * Answer a staff question about the school data with Gemini.
-     */
     public function __invoke(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -107,8 +98,7 @@ class AIChatController extends Controller
     }
 
     /**
-     * Build the conversation, oldest first, ending with the new question.
-     * Gemini calls the assistant side of a conversation "model".
+     * Gemini calls the assistant side "model".
      *
      * @param  array<int, array{role: string, content: string}>  $history
      * @return array<int, array<string, mixed>>
@@ -130,9 +120,8 @@ class AIChatController extends Controller
     }
 
     /**
-     * Pull the text parts out of the first candidate, if there are any.
-     * A successful response can still legitimately carry no text: a safety
-     * block, or the token budget spent before any output was produced.
+     * A successful response can still carry no text: a safety block, or the
+     * token budget spent before any output.
      *
      * @param  array<string, mixed>|null  $body
      */
@@ -149,14 +138,9 @@ class AIChatController extends Controller
     }
 
     /**
-     * The system prompt: who the model is, plus the whole school as a
-     * plain-text listing.
-     *
-     * Aggregates and relationships come first, raw rows last. The model is
-     * far better at citing a fact stated outright than at deriving one by
-     * scanning hundreds of lines, so everything it is actually asked about -
-     * weekly hours, which subjects a grade studies, what a named teacher
-     * teaches - is computed in SQL and written down.
+     * The system prompt: the rules, then the whole school as plain text.
+     * Aggregates first, raw rows last: the model cites a stated fact far more
+     * reliably than one it has to derive.
      */
     private function systemInstruction(): string
     {
@@ -185,10 +169,8 @@ class AIChatController extends Controller
     }
 
     /**
-     * The counting questions, answered in SQL before the model ever sees the
-     * data. Asking it to count a list of names itself is unreliable - it has
-     * been seen to list seven pupils correctly and then report six - so every
-     * number it might be asked for is pre-computed here and stated as a fact.
+     * Every countable figure, worked out in SQL. The model miscounts lists:
+     * it has listed seven pupils correctly and then reported six.
      */
     private function countsContext(): string
     {
@@ -218,16 +200,9 @@ class AIChatController extends Controller
     }
 
     /**
-     * The curriculum, in the shape the model is asked about it.
-     *
-     * Grade-level questions - from which year is English taught, does 2ème
-     * année study French, how many hours a week does a 6ème année class get -
-     * were only answerable from the raw rows by joining a timetable slot to
-     * its lesson to its class, then reading a grade out of the class name.
-     * Left to do that itself the model gave up and said it did not know. So
-     * the join happens in SQL and the three shapes staff ask for are stated:
-     * hours per subject per grade, the grades each subject belongs to, and
-     * the weekly total per class.
+     * The curriculum in the three shapes staff ask about: hours per subject per
+     * grade, the grades each subject covers, and the weekly total per class.
+     * Left to join these itself the model gave up and said it did not know.
      */
     private function curriculumContext(): string
     {
@@ -325,9 +300,6 @@ class AIChatController extends Controller
         ]);
     }
 
-    /**
-     * Serialise every table into a compact plain-text summary.
-     */
     private function schoolContext(): string
     {
         $sections = [];
@@ -371,19 +343,9 @@ class AIChatController extends Controller
     }
 
     /**
-     * One line per teacher, saying what they actually teach.
-     *
-     * The subject column on the teachers table sometimes holds a job title
-     * rather than a subject: a lower or mid band titulaire's reads
-     * "Enseignement polyvalent", which names nothing teachable. Asked who
-     * teaches maths, the model was left inferring subjects from lesson titles
-     * and answered with sixteen people. So each teacher's real subjects,
-     * classes and weekly load are derived from their lessons here, and the
-     * column is left out of the context.
-     *
-     * Upper-band staff are named by the subject they hold, so their column
-     * would in fact be accurate. It is still derived rather than read, so one
-     * rule covers the whole staff room and the two cannot disagree.
+     * What each teacher actually teaches, derived from their lessons. The
+     * subject column can hold a job title ("Enseignement polyvalent") which
+     * names nothing teachable, so it is never used to answer a subject question.
      */
     private function teacherContext(): string
     {
@@ -432,14 +394,8 @@ class AIChatController extends Controller
     }
 
     /**
-     * The timetable, one line per class per day.
-     *
-     * It used to be 432 flat lines of "day | time | lesson title | room",
-     * which no question could actually be answered from: lesson titles are
-     * not unique - 138 lessons share 40 titles - and the line named neither
-     * the class nor the teacher, so there was no way back to either. Grouping
-     * by class and day restores the association for about the same number of
-     * characters as the flat dump cost.
+     * Grouped by class and day. A flat dump of 432 slots answered nothing:
+     * lesson titles are not unique and the line named neither class nor teacher.
      */
     private function timetableContext(): string
     {
@@ -474,9 +430,6 @@ class AIChatController extends Controller
         return "EMPLOI DU TEMPS (classe | jour: horaire matière - cours (salle))\n- ".$lines->implode("\n- ");
     }
 
-    /**
-     * Every timetable slot, joined out to the class that sits it.
-     */
     private function timetableSlots(): Builder
     {
         return DB::table('timetables')
@@ -484,19 +437,12 @@ class AIChatController extends Controller
             ->join('school_classes', 'school_classes.id', '=', 'lessons.school_class_id');
     }
 
-    /**
-     * A grade number written the way staff say it: 1 becomes "1ère année".
-     */
     private function gradeName(int $level): string
     {
         return $level === 1 ? '1ère année' : $level.'ème année';
     }
 
-    /**
-     * Render one line per row, or a placeholder for an empty table.
-     *
-     * @param  EloquentCollection<int, covariant \Illuminate\Database\Eloquent\Model>  $rows
-     */
+    /** @param  EloquentCollection<int, covariant \Illuminate\Database\Eloquent\Model>  $rows */
     private function lines(EloquentCollection $rows, callable $format): string
     {
         if ($rows->isEmpty()) {

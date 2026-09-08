@@ -7,9 +7,7 @@ use App\Models\Lesson;
 use App\Models\Student;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Attendance>
- */
+/** @extends Factory<Attendance> */
 class AttendanceFactory extends Factory
 {
     /**
@@ -35,9 +33,6 @@ class AttendanceFactory extends Factory
         ];
     }
 
-    /**
-     * Mark a specific status.
-     */
     public function status(string $status): static
     {
         return $this->state(fn (array $attributes) => [
@@ -60,9 +55,6 @@ class AttendanceFactory extends Factory
         return $this->status(Attendance::LATE);
     }
 
-    /**
-     * Attach the mark to a pupil.
-     */
     public function forStudent(Student $student): static
     {
         return $this->state(fn (array $attributes) => [
@@ -70,9 +62,6 @@ class AttendanceFactory extends Factory
         ]);
     }
 
-    /**
-     * Attach the mark to a lesson, or to no lesson at all for a full-day mark.
-     */
     public function forLesson(?Lesson $lesson): static
     {
         return $this->state(fn (array $attributes) => [
@@ -80,9 +69,6 @@ class AttendanceFactory extends Factory
         ]);
     }
 
-    /**
-     * Record the mark on a given day.
-     */
     public function on(string $date): static
     {
         return $this->state(fn (array $attributes) => [

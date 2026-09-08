@@ -6,19 +6,10 @@ use App\Models\Lesson;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * @mixin Lesson
- */
+/** @mixin Lesson */
 class LessonResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * Every field is listed explicitly so that new columns are not exposed
-     * by accident.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [

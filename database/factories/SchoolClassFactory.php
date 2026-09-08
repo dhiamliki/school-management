@@ -5,9 +5,7 @@ namespace Database\Factories;
 use App\Models\SchoolClass;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<SchoolClass>
- */
+/** @extends Factory<SchoolClass> */
 class SchoolClassFactory extends Factory
 {
     /**
@@ -34,17 +32,11 @@ class SchoolClassFactory extends Factory
         6 => ['A', 'B', 'C'],
     ];
 
-    /**
-     * Spell a grade the way the school writes it: "1ère année", "3ème année".
-     */
     public static function gradeLabel(int $grade): string
     {
         return $grade === 1 ? '1ère année' : $grade.'ème année';
     }
 
-    /**
-     * The full name of one class, e.g. "3ème année B".
-     */
     public static function className(int $grade, string $section): string
     {
         return self::gradeLabel($grade).' '.$section;
@@ -88,9 +80,6 @@ class SchoolClassFactory extends Factory
         ];
     }
 
-    /**
-     * Build a specific grade and section.
-     */
     public function grade(int $grade, string $section): static
     {
         return $this->state(fn (array $attributes) => [

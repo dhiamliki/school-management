@@ -9,9 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * The header search: one lookup across pupils, teachers and classes.
- */
+/** The header search: one lookup across pupils, teachers and classes. */
 class SearchTest extends TestCase
 {
     use RefreshDatabase;
@@ -64,9 +62,7 @@ class SearchTest extends TestCase
             ->assertJsonPath('data.0.label', 'Hédi Jelassi');
     }
 
-    /**
-     * One character matches most of the school and tells nobody anything.
-     */
+    /** One character matches most of the school and tells nobody anything. */
     public function test_a_single_character_returns_nothing(): void
     {
         Student::factory()->create(['name' => 'Salma Trabelsi']);
@@ -74,9 +70,7 @@ class SearchTest extends TestCase
         $this->getJson('/api/search?q=S')->assertOk()->assertJsonCount(0, 'data');
     }
 
-    /**
-     * A wildcard the user typed is a character to look for, not a pattern.
-     */
+    /** A wildcard the user typed is a character to look for, not a pattern. */
     public function test_like_wildcards_are_escaped(): void
     {
         Student::factory()->create(['name' => 'Salma Trabelsi']);

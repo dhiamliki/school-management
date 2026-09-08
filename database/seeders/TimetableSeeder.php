@@ -12,15 +12,8 @@ use Illuminate\Support\Facades\DB;
 class TimetableSeeder extends Seeder
 {
     /**
-     * Lay the whole school week out on the grid.
-     *
-     * Each lesson runs as many hours a week as the curriculum says, so a class
-     * with 30 weekly hours fills 30 of the 32 teaching slots the week offers
-     * (six full days plus the Samedi morning). That is tight enough that the
-     * order of placement matters: the busiest teachers are placed first,
-     * because they have the least slack left once the grid fills up.
-     *
-     * Three things must never collide - a teacher, a class, and a room.
+     * Lay the school week on the grid. An upper-band class fills 30 of the 32
+     * slots the week offers, so placement order decides whether it fits.
      */
     public function run(): void
     {
@@ -32,28 +25,10 @@ class TimetableSeeder extends Seeder
 
         $pairs = $this->daySlotPairs();
 
-        // Order by how little room a teacher has left in their own week.
-        //
-        // A teacher's hours have to fit inside the 32 slots the week offers,
-        // so their total load is what decides how much freedom they have:
-        // somebody owing 21 hours can be placed 11 ways, somebody owing 6 has
-        // 26. Whoever has the least slack goes first, while the grid is still
-        // empty enough to take them.
-        //
-        // Two earlier keys were tried and are deliberately gone. Ranking on
-        // total load with the specialists forced to the front worked only
-        // while "specialist" meant something: in the upper band every post is
-        // now a subject post, so the flag was true for all of them and the
-        // tiebreak fell through to the number of classes a teacher serves.
-        // That reads backwards under specialisation - the Français teacher
-        // covers the fewest classes (two) precisely because she owes each of
-        // them eight hours - so she sorted last and five of those hours had
-        // nowhere left to go. Load puts her third, behind Arabe and ahead of
-        // everyone owing twelve hours or fewer.
-        //
-        // Class count survives as the tiebreak, where it still means what it
-        // used to: between two teachers owing the same hours, the one whose
-        // hours are scattered over more timetables is the harder to place.
+        // Busiest teacher first: load is what decides how much slack is left.
+        // Not class count, which reads backwards under subject specialisation,
+        // where the Français teacher covers the fewest classes precisely
+        // because she owes each of them eight hours.
         $load = [];
         $classes = [];
 
@@ -68,16 +43,14 @@ class TimetableSeeder extends Seeder
             $this->hoursFor($l),
         ])->values();
 
-        // Bookings are held in memory until the end so the repair pass below
-        // can move one without touching the database.
+        // Held in memory so the repair pass can move a booking cheaply.
         $busyTeachers = [];
         $busyClasses = [];
         $busyRooms = [];
         $rows = [];
         $pending = [];
 
-        // How many bookings the whole school already holds in each slot of the
-        // week, so placement can keep the grid level. See bestPair().
+        // School-wide slot occupancy, so placement can keep the grid level.
         $slotUse = [];
 
         foreach ($ordered as $lesson) {
@@ -89,8 +62,7 @@ class TimetableSeeder extends Seeder
                 $chosen = $this->bestPair($lesson, $room, $pairs, $perDay, $slotUse, $busyTeachers, $busyClasses, $busyRooms);
 
                 if ($chosen === null) {
-                    // Nothing free right now; the repair pass gets another go
-                    // once the whole week has been laid out.
+                    // The repair pass gets another go once the week is laid out.
                     $pending[] = [$lesson, $room];
 
                     continue;
@@ -103,10 +75,7 @@ class TimetableSeeder extends Seeder
             }
         }
 
-        // Greedy placement leaves the last classes competing for whatever is
-        // left, which can strand a few hours. Rather than dropping them, try
-        // to move one existing booking out of the way - the teacher blocking
-        // the slot usually has somewhere else they could be.
+        // Move a blocking booking rather than dropping a stranded hour.
         $unplaced = 0;
 
         foreach ($pending as [$lesson, $room]) {
@@ -130,8 +99,6 @@ class TimetableSeeder extends Seeder
     }
 
     /**
-     * Record one booking in the row buffer and the three busy indexes.
-     *
      * @param  list<array<string, mixed>>  $rows
      * @param  array<string, int>  $busyTeachers
      * @param  array<string, int>  $busyClasses
@@ -169,12 +136,7 @@ class TimetableSeeder extends Seeder
     }
 
     /**
-     * Place a stranded hour by relocating whatever blocks it.
-     *
-     * For each slot where the class is free, the obstacle is the teacher being
-     * busy elsewhere. If that other booking can move somewhere its own class,
-     * teacher and room are all free, moving it opens this slot. One level of
-     * displacement is enough in practice.
+     * Free a slot by relocating whatever blocks it. One level of displacement.
      *
      * @param  list<array<string, mixed>>  $rows
      * @param  array<string, int>  $busyTeachers
@@ -219,7 +181,6 @@ class TimetableSeeder extends Seeder
                     continue;
                 }
 
-                // Move the blocker, then take the slot it vacated.
                 unset(
                     $busyTeachers[$blocker['_teacher'].'@'.$when],
                     $busyClasses[$blocker['_class'].'@'.$when],
@@ -244,20 +205,10 @@ class TimetableSeeder extends Seeder
     }
 
     /**
-     * The free slot that spreads this subject best.
-     *
-     * Preference order:
-     *  1. A day the class does not already have this subject on. Without this
-     *     a class would take all eleven hours of Arabe on Monday and Tuesday.
-     *  2. The hour of the week the school is using least. Ranking on the slot
-     *     index alone filled the timetable front to back - every class took
-     *     08:00 first and 15:00 last - so the free hours every class had left
-     *     over were the same two or three late-afternoon slots. The teachers
-     *     placed last need one hour in each of six classes, and when all six
-     *     classes are only free at the same moment those hours cannot all be
-     *     placed. Levelling the grid scatters the leftovers across different
-     *     times instead, which is what makes the last hours fit.
-     *  3. The earliest such hour, so a level grid still reads front to back.
+     * Preference order: a day this lesson is not already on, then the hour the
+     * school is using least, then the earliest. Ranking on the slot index alone
+     * filled classes front to back and left every one of them free at the same
+     * late-afternoon times, which the teachers placed last cannot all use.
      *
      * @param  list<array{string, string, string}>  $pairs
      * @param  array<string, int>  $perDay
@@ -289,9 +240,7 @@ class TimetableSeeder extends Seeder
                 continue;
             }
 
-            // The weights keep the three rules strictly ordered: no number of
-            // free slots can outrank spreading across days, and the index only
-            // separates slots the school is using equally often.
+            // Weights keep the three rules strictly ordered.
             $score = ($perDay[$day] ?? 0) * 1000
                 + ($slotUse[$when] ?? 0) * 10
                 + $index;
@@ -305,9 +254,6 @@ class TimetableSeeder extends Seeder
         return $best;
     }
 
-    /**
-     * Weekly hours this lesson runs, from the curriculum.
-     */
     private function hoursFor(Lesson $lesson): int
     {
         $grade = (int) ($lesson->schoolClass->level ?? 1) ?: 1;
@@ -315,12 +261,7 @@ class TimetableSeeder extends Seeder
         return Curriculum::hoursForGrade($grade)[$lesson->subject] ?? 1;
     }
 
-    /**
-     * Every day paired with the slots it actually runs, so a half day
-     * contributes only its morning.
-     *
-     * @return list<array{string, string, string}>
-     */
+    /** @return list<array{string, string, string}> */
     private function daySlotPairs(): array
     {
         $pairs = [];
@@ -334,13 +275,7 @@ class TimetableSeeder extends Seeder
         return $pairs;
     }
 
-    /**
-     * The class's own room, except for sport.
-     *
-     * Each band has its own outdoor space: the three bands each have their own
-     * Éducation Physique teacher, and without separate venues two bands could
-     * be sent to the same pitch at the same hour.
-     */
+    /** Each band has its own outdoor space, or two bands share a pitch. */
     private function roomFor(Lesson $lesson): string
     {
         if ($lesson->subject === 'Éducation Physique') {

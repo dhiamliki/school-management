@@ -18,18 +18,10 @@ use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
 {
-    /**
-     * Tenths, so an at-risk rate of 15.4% survives the integer comparison in
-     * atRisk() without a float ever being bound. See the note there.
-     */
+    /** Tenths, so a 15.4% cutoff survives the integer comparison in atRisk(). */
     private const RATE_SCALE = 10;
 
-    /**
-     * Display a listing of the resource.
-     *
-     * Accepts ?date=, ?student_id= and ?school_class_id= so the marking grid
-     * can ask for exactly the day it is showing.
-     */
+    /** Filterable by ?date=, ?student_id=, ?school_class_id= and ?status=. */
     public function index(Request $request): AnonymousResourceCollection
     {
         $filters = $request->validate([
@@ -55,9 +47,6 @@ class AttendanceController extends Controller
         return AttendanceResource::collection($attendances);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreAttendanceRequest $request): JsonResponse
     {
         $attendance = Attendance::create($request->validated());
@@ -67,9 +56,6 @@ class AttendanceController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Attendance $attendance): AttendanceResource
     {
         $attendance->load(['student.schoolClass', 'lesson']);
@@ -77,9 +63,6 @@ class AttendanceController extends Controller
         return new AttendanceResource($attendance);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateAttendanceRequest $request, Attendance $attendance): AttendanceResource
     {
         $attendance->update($request->validated());
@@ -87,9 +70,6 @@ class AttendanceController extends Controller
         return new AttendanceResource($attendance->load(['student.schoolClass', 'lesson']));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Attendance $attendance): Response
     {
         $attendance->delete();
@@ -97,9 +77,6 @@ class AttendanceController extends Controller
         return response()->noContent();
     }
 
-    /**
-     * Full attendance history for one pupil, newest first.
-     */
     public function byStudent(Request $request, Student $student): AnonymousResourceCollection
     {
         $attendances = $student->attendances()
@@ -113,23 +90,11 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Pupils at risk on attendance, worst first.
-     *
-     * Measured as a RATE - absences over every mark the pupil has in the
-     * window - not as a raw count.
-     *
-     * A count conflates two different things: how often a pupil is actually
-     * away, and how many lessons they sit in the first place. One mark is
-     * written per lesson, and the curriculum gives the upper band far more
-     * weekly hours than the lower one, so an upper-band pupil accumulates
-     * marks about 60% faster (114 in a month against 70) and crosses any fixed
-     * count sooner on identical behaviour. On the seeded school, "more than 5
-     * absences" flagged 45.5% of the upper band against 16.7% of the lower -
-     * a 2.7x gap that is an artefact of the timetable, not of attendance. The
-     * same data under the rate rule flags 4 upper and 2 lower.
-     *
-     * `threshold` still selects the old count rule for anyone who wants it,
-     * but the two are different questions and cannot both be answered at once.
+     * Pupils at risk, worst first, measured as an absence RATE not a count.
+     * A count conflates being away with sitting more lessons: the upper band
+     * accumulates marks 60% faster, so a fixed count flagged 45% of it against
+     * 17% of the lower band on identical behaviour. ?threshold= still selects
+     * the old count rule.
      */
     public function atRisk(Request $request): JsonResponse
     {
@@ -149,9 +114,8 @@ class AttendanceController extends Controller
         $rate = (float) ($validated['rate'] ?? Attendance::AT_RISK_RATE);
         $minRecords = (int) ($validated['min_records'] ?? Attendance::AT_RISK_MIN_RECORDS);
 
-        // One aggregate pass over the window, joined back to the roster. Doing
-        // it as a derived table rather than as withCount lets the rate be both
-        // filtered and sorted on, which a withCount alias cannot be.
+        // A derived table rather than withCount, so the rate can be both
+        // filtered and sorted on.
         $summary = Attendance::query()
             ->selectRaw(
                 'student_id,'
@@ -173,19 +137,13 @@ class AttendanceController extends Controller
                 $byCount,
                 fn ($query) => $query->where('summary.absence_count', '>', $threshold),
                 // A handful of marks can produce any rate at all, so a pupil
-                // who has barely been in the register yet is not evidence of
-                // anything. The floor keeps a new arrival with one absence in
-                // three lessons off a list that is meant to prompt a phone call.
+                // barely in the register yet is not evidence of anything.
                 fn ($query) => $query
                     ->where('summary.records_count', '>=', $minRecords)
-                    // Compared as whole numbers rather than against the rate
-                    // directly, and not for tidiness: PDO's SQLite driver has
-                    // no float parameter type, so a bound 15.0 arrives as the
-                    // string '15' - and SQLite sorts every text value above
-                    // every number, making `absence_rate > ?` quietly false
-                    // for every pupil. Multiplying out keeps both sides
-                    // integers, which bind and compare correctly on SQLite and
-                    // MySQL alike. The tenth is preserved: RATE_SCALE is 10.
+                    // Scaled to integers on both sides. PDO's SQLite driver has
+                    // no float type, so a bound 15.0 arrives as the string '15',
+                    // and SQLite sorts text above every number: the comparison
+                    // would be quietly false for every pupil.
                     ->whereRaw(
                         'summary.absence_count * '.(self::RATE_SCALE * 100)
                         .' > ? * summary.records_count',
@@ -208,18 +166,13 @@ class AttendanceController extends Controller
             'absence_count' => (int) $student->absence_count,
             'late_count' => (int) $student->late_count,
             'records_count' => (int) $student->records_count,
-            // The figure the rate rule filters on.
             'absence_rate' => round((float) $student->absence_rate, 1),
-            // Kept for callers that already read it: the share of marks that
-            // were not an absence.
             'attendance_rate' => $student->records_count > 0
                 ? round(($student->records_count - $student->absence_count) / $student->records_count * 100, 1)
                 : null,
         ]);
 
-        // Wrapped as a resource collection so this answers with the same
-        // { data, links, meta } envelope as every other index endpoint, with
-        // the rule the report was built under added alongside.
+        // Same { data, links, meta } envelope as every other index endpoint.
         return JsonResource::collection($students)
             ->additional([
                 'rule' => $byCount ? 'count' : 'rate',
@@ -232,25 +185,13 @@ class AttendanceController extends Controller
             ->response();
     }
 
-    /**
-     * Record a whole day's marks in one request.
-     *
-     * The marking grid saves a screenful of pupils at once, and one request
-     * per row would be both slow and non-atomic. Marks are upserted on
-     * (pupil, lesson, day) so re-saving a day corrects it instead of failing
-     * on the unique index - and so that full-day marks, which the index
-     * cannot constrain because their lesson_id is null, still cannot pile up.
-     */
+    /** A whole class in one request, upserted so re-saving a day corrects it. */
     public function bulk(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'date' => ['required', 'date'],
             'lesson_id' => ['nullable', 'exists:lessons,id'],
-            // Capped as well as floored. The grid saves one class at a time
-            // and the largest class in the school is nowhere near this, so the
-            // ceiling only bites on a payload nobody meant to send: without it
-            // one request could ask for an unbounded number of rows, each
-            // costing two queries inside a single transaction.
+            // Capped so one request cannot ask for unbounded rows.
             'marks' => ['required', 'array', 'min:1', 'max:200'],
             'marks.*.student_id' => ['required', 'exists:students,id'],
             'marks.*.status' => ['required', Rule::in(Attendance::STATUSES)],
@@ -264,10 +205,9 @@ class AttendanceController extends Controller
             $count = 0;
 
             foreach ($validated['marks'] as $mark) {
-                // Matched with whereDate rather than updateOrCreate: the date
-                // cast stores a midnight timestamp, so an equality match on a
-                // 'Y-m-d' string would miss the existing row and insert a
-                // duplicate every time the day was re-saved.
+                // whereDate, not updateOrCreate: the date cast stores a
+                // midnight timestamp, so matching a 'Y-m-d' string would miss
+                // the row and insert a duplicate on every re-save.
                 $existing = Attendance::where('student_id', $mark['student_id'])
                     ->when(
                         $lessonId === null,

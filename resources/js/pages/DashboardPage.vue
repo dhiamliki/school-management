@@ -8,33 +8,15 @@ import AppIcon from '../components/AppIcon.vue';
 import ChartCanvas from '../components/ChartCanvas.vue';
 import MiniCalendar from '../components/MiniCalendar.vue';
 
-/**
- * The absence rate above which the Alertes panel reports a pupil. Mirrors
- * Attendance::AT_RISK_RATE, which is what the endpoint actually applies; this
- * copy exists only so the panel can say what it is measuring.
- */
+// Mirrors Attendance::AT_RISK_RATE, only so the panel can state its cutoff.
 const AT_RISK_RATE = 15;
 const ALERTS_SHOWN = 5;
 
 /**
- * Chart colours - the dashboard's own palette.
- *
- * This page, and only this page, departs from the single blue accent the rest
- * of the app uses: the two charts run on the reference's soft blue and yellow
- * rather than on the app's semantic green / amber / red. That is a deliberate
- * exception and it stops at the charts: every badge, pill and row elsewhere on
- * the page - the Alertes rates included - still uses the semantic palette,
- * where the colour is the meaning rather than the styling.
- *
- * Retards needs a third colour the two-tone reference does not supply; the
- * soft violet is taken from the same family, and keeps the tone consistent.
- *
- * The values are needed in JavaScript, so they are declared here and mirrored
- * by the --dash-* custom properties in the style block; the two are meant to
- * stay in step. Each legend reads its swatch from the same constant that
- * colours the chart it belongs to - genderSlices for the donut,
- * attendanceSeries for the bars - so a legend dot cannot drift away from the
- * slice or bar it stands for.
+ * Chart-only palette, deliberately not the semantic green/amber/red used for
+ * badges elsewhere. Mirrored by the --dash-* properties in the style block.
+ * Each legend reads its swatch from the same constant as its chart, so a dot
+ * cannot drift from the slice it stands for.
  */
 const CHART_BLUE = '#8ecfe8';
 const CHART_YELLOW = '#f4cf5b';
@@ -63,8 +45,7 @@ const week = ref([]);
 // Today's marks: present over everything marked so far today.
 const markedToday = ref(null);
 const todayRate = ref(null);
-// The previous teaching day's rate and the gap between the two. Both stay
-// null unless each day actually has a register.
+// Both null unless each day actually has a register.
 const previousDay = ref(null);
 const rateChange = ref(null);
 
@@ -77,15 +58,8 @@ const alerts = computed(() => atRisk.value.slice(0, ALERTS_SHOWN));
    Stat tiles
 --------------------------------------------------------------------------- */
 
-/**
- * The headline tiles, each with the badge it has earned.
- *
- * Every badge is a real figure derived from something the school already
- * records - an occupancy rate against declared capacity, an average per class,
- * a count of distinct subjects. Cours deliberately carries none: no figure
- * about lessons says anything the headline count does not, and inventing a
- * "+12 %" to fill the corner is exactly what this page must not do.
- */
+// Every badge is a real derived figure. Cours carries none on purpose: no
+// figure about lessons says more than the count itself.
 const tiles = computed(() => {
     const classes = counts.value.school_classes ?? null;
     const students = counts.value.students ?? null;
@@ -141,10 +115,7 @@ const tiles = computed(() => {
    Gender donut
 --------------------------------------------------------------------------- */
 
-/**
- * The slices, "non renseigné" included only when there is one - a school that
- * has recorded every pupil should not carry an empty slice in its legend.
- */
+// "non renseigné" only when there is one.
 const genderSlices = computed(() => {
     if (!gender.value) {
         return [];
@@ -176,8 +147,6 @@ const genderChart = computed(() => ({
 }));
 
 const genderOptions = {
-    // A thin ring around a wide open middle, as in the reference - the centre
-    // is a space the pair of figures sits in, not a label slot.
     cutout: '80%',
     plugins: {
         tooltip: {
@@ -200,18 +169,8 @@ const genderSummary = computed(() =>
 
 const weekHasMarks = computed(() => week.value.some((day) => day.marked > 0));
 
-/**
- * The bars chart rates, not volumes.
- *
- * Raw counts made the chart unreadable and, worse, misleading: a day's total
- * depends on how many registers happened to be taken, so a tall bar said
- * "more marks were entered", not "attendance was better". As a share of that
- * day's own marks the six days are actually comparable, and the two or three
- * absences a primary school records stop vanishing under a block of présents.
- *
- * The counts behind each share are kept alongside and printed in the tooltip,
- * so nothing is lost by the conversion.
- */
+// Rates, not volumes: a day's raw total depends on how many registers were
+// taken, so a tall bar meant "more marks entered", not "better attendance".
 function share(value, total) {
     return total ? Math.round((value / total) * 100) : 0;
 }
@@ -223,15 +182,13 @@ const attendanceSeries = [
 ];
 
 const attendanceChart = computed(() => ({
-    // Samedi is a half day. That no longer shortens the bars - a rate is a
-    // rate - but the label keeps saying so, because it still explains why the
-    // day rests on far fewer marks.
+    // Samedi is a half day: the label still says so, because it explains why
+    // the day rests on far fewer marks.
     labels: week.value.map((day) => (day.half_day ? `${day.day} ½` : day.day)),
     datasets: attendanceSeries.map((series) => ({
         label: series.label,
         data: week.value.map((day) => share(day[series.key], day.marked)),
-        // Carried through so the tooltip can show the count the share came
-        // from; Chart.js hands the whole dataset back on hover.
+        // For the tooltip: Chart.js hands the whole dataset back on hover.
         counts: week.value.map((day) => day[series.key]),
         totals: week.value.map((day) => day.marked),
         backgroundColor: series.color,
@@ -315,17 +272,11 @@ function formatChange(value) {
     return `${value > 0 ? '+' : '−'}${size.toFixed(1).replace('.', ',')} pt${size >= 2 ? 's' : ''}`;
 }
 
-/**
- * The five independent requests behind the page, each named by the part of
- * the dashboard it fills and each writing only its own state.
- *
- * @type {Array<{ label: string, run: () => Promise<void> }>}
- */
+/** @type {Array<{ label: string, run: () => Promise<void> }>} */
 const widgets = [
     {
         label: 'les chiffres clés',
         run: async () => {
-            // One request for every headline figure on the page.
             const { data } = await api.get('/dashboard/stats');
 
             counts.value = data.counts ?? {};
@@ -373,10 +324,7 @@ const widgets = [
 ];
 
 onMounted(async () => {
-    // allSettled, not all: these five requests have nothing to do with each
-    // other, and Promise.all rejecting on the first failure threw away the
-    // four answers that had arrived. Now a widget that fails is named and the
-    // rest of the page still renders.
+    // allSettled, not all: one failed widget must not discard the others.
     const results = await Promise.allSettled(widgets.map((widget) => widget.run()));
 
     const missing = widgets

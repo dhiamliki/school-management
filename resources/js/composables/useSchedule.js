@@ -8,13 +8,8 @@ export function toHm(value) {
 }
 
 /**
- * Flatten the lesson/timetable nesting the show endpoints return into a plain
- * list of slots.
- *
- * The API answers with lessons that each carry their own slots, because that
- * is how the relations hang together. Every profile page wants the opposite
- * shape - one row per slot, carrying its lesson - so the flattening lives
- * here rather than being repeated three times.
+ * The API nests slots under lessons; every profile page wants the opposite,
+ * one row per slot carrying its lesson.
  */
 export function slotsFromLessons(lessons) {
     const slots = [];
@@ -38,19 +33,13 @@ export function slotsFromLessons(lessons) {
     return sortSlots(slots);
 }
 
-/**
- * Chronological across the week: by teaching day, then by start time.
- */
 export function sortSlots(slots) {
     return [...slots].sort(
         (a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.start.localeCompare(b.start),
     );
 }
 
-/**
- * Group slots by day, keeping the teaching-day order and dropping days with
- * nothing on them - a half day should not render four empty rows.
- */
+// Drops empty days, so a half day does not render four blank rows.
 export function groupByDay(slots) {
     return DAYS.map((day) => ({ day, slots: slots.filter((slot) => slot.day === day) })).filter(
         (group) => group.slots.length > 0,

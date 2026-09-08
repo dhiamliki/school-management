@@ -1,26 +1,15 @@
 import { ref } from 'vue';
 import api from '../lib/api';
 
-/**
- * The shape the index endpoints answer with when no page has been loaded yet.
- */
 function emptyMeta() {
     return { current_page: 1, last_page: 1, per_page: null, total: 0, from: 0, to: 0 };
 }
 
-/**
- * Index endpoints answer with Laravel's paginated envelope
- * ({ data, links, meta }). Older callers passed the flat array straight
- * through, so both shapes are accepted here.
- */
+// Accepts both the paginated envelope and a flat array.
 export function unwrapList(payload) {
     return Array.isArray(payload) ? payload : (payload?.data ?? []);
 }
 
-/**
- * Pull the pagination block out of a paginated response, falling back to a
- * single-page description for a flat array.
- */
 export function unwrapMeta(payload) {
     if (Array.isArray(payload)) {
         return {
@@ -50,13 +39,7 @@ export function unwrapMeta(payload) {
     };
 }
 
-/**
- * Shared list/create/update/delete behaviour for a single API endpoint.
- *
- * `perPage` fixes the page size for every request from this instance. Leave
- * it out to take the API default (15); pass a large value for a view that
- * has to render a whole bounded dataset at once, such as the timetable grid.
- */
+// perPage fixes the page size for this instance; omit it for the API default.
 export function useResource(endpoint, { perPage = null } = {}) {
     const items = ref([]);
     const loading = ref(false);
@@ -66,10 +49,6 @@ export function useResource(endpoint, { perPage = null } = {}) {
     const meta = ref(emptyMeta());
     const page = ref(1);
 
-    /**
-     * Load one page of the collection, keeping whatever page is current
-     * unless a specific one is asked for.
-     */
     async function load({ page: requestedPage = page.value, retryOutOfRange = true } = {}) {
         loading.value = true;
         failure.value = '';
@@ -86,9 +65,7 @@ export function useResource(endpoint, { perPage = null } = {}) {
             meta.value = unwrapMeta(data);
             page.value = meta.value.current_page;
 
-            // Deleting the last row of the last page leaves the current page
-            // past the end of the collection: land on the new last page
-            // rather than showing an empty table.
+            // Deleting the last row of the last page lands past the end.
             if (retryOutOfRange && meta.value.last_page >= 1 && requestedPage > meta.value.last_page) {
                 return await load({ page: meta.value.last_page, retryOutOfRange: false });
             }
@@ -99,9 +76,6 @@ export function useResource(endpoint, { perPage = null } = {}) {
         }
     }
 
-    /**
-     * Move to another page, ignoring anything out of range or already shown.
-     */
     async function goToPage(target) {
         const wanted = Math.min(Math.max(Number(target) || 1, 1), meta.value.last_page || 1);
 
@@ -124,9 +98,7 @@ export function useResource(endpoint, { perPage = null } = {}) {
                 await api.post(endpoint, payload);
             }
 
-            // An edit leaves the row where it was, so stay put. A new row is
-            // newest-first and therefore heads page 1: staying on page 2+ would
-            // only tick the total up with nothing visibly added.
+            // A new row heads page 1; an edit leaves the row where it was.
             await load({ page: id ? page.value : 1 });
 
             return true;

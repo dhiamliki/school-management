@@ -16,9 +16,6 @@ class StudentSeeder extends Seeder
 
     protected int $maxPerClass = 26;
 
-    /**
-     * Seed the students table, filling every class to a plausible size.
-     */
     public function run(): void
     {
         $classes = SchoolClass::all();

@@ -2,10 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-/*
-| The SPA shell. Everything that is not an API endpoint, the Sanctum CSRF
-| cookie route or the health check is handed to Vue Router.
-*/
+// The SPA shell. Everything but api, sanctum and the health check goes to Vue.
 
 Route::get('/{any?}', function () {
     return view('app');

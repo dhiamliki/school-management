@@ -210,7 +210,6 @@ body {
     font-weight: var(--weight-semibold);
 }
 
-
 /* Icons inherit the link colour, so they follow hover and active states. */
 .sidebar-nav .icon {
     flex: none;

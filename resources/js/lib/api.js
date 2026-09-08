@@ -11,28 +11,17 @@ const api = axios.create({
     withXSRFToken: true,
 });
 
-// No X-CSRF-TOKEN header is sent on purpose. Laravel prefers that header
-// over the XSRF-TOKEN cookie, and the token baked into the page's meta tag
-// goes stale the moment logout calls regenerateToken() - which would then
-// break logging back in without a full page reload. Sanctum's cookie, which
-// useAuth refreshes via /sanctum/csrf-cookie before each login, is the one
-// source of truth instead.
+// No X-CSRF-TOKEN header on purpose: Laravel prefers it over the cookie, and
+// the meta tag token goes stale the moment logout regenerates it.
 
-/**
- * Set by app.js. Kept as an injected callback rather than importing the
- * router here, which would create a cycle (router -> useAuth -> api).
- */
+// Injected rather than importing the router, which would cycle.
 let onUnauthorized = null;
 
 export function setUnauthorizedHandler(handler) {
     onUnauthorized = handler;
 }
 
-/**
- * Requests that are allowed to answer 401 on their own: the session probe
- * and the login attempt itself. Redirecting on those would fight the
- * router guard and the login form.
- */
+// The session probe and the login attempt handle their own 401.
 function handlesOwn401(config) {
     const url = config?.url ?? '';
 

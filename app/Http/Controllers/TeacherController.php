@@ -13,9 +13,6 @@ use Illuminate\Http\Response;
 
 class TeacherController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request): AnonymousResourceCollection
     {
         return TeacherResource::collection(
@@ -23,9 +20,6 @@ class TeacherController extends Controller
         );
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreTeacherRequest $request): JsonResponse
     {
         $teacher = Teacher::create($request->validated());
@@ -35,9 +29,6 @@ class TeacherController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Teacher $teacher): TeacherResource
     {
         // The lessons carry their class and their slots, which is what the
@@ -53,9 +44,6 @@ class TeacherController extends Controller
         return new TeacherResource($teacher);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateTeacherRequest $request, Teacher $teacher): TeacherResource
     {
         $teacher->update($request->validated());
@@ -63,9 +51,6 @@ class TeacherController extends Controller
         return new TeacherResource($teacher);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Teacher $teacher): Response
     {
         $teacher->delete();

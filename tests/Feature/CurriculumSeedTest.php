@@ -18,9 +18,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The shape of the seeded école primaire: which subjects reach which grades,
- * and that the week it lays out is actually teachable - nobody in two places
- * at once, and Samedi finishing at lunchtime.
+ * The shape of the seeded school: which subjects reach which grades, and
+ * that the week it lays out is actually teachable.
  */
 class CurriculumSeedTest extends TestCase
 {
@@ -62,11 +61,7 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * The band programme decides which subjects a class studies: Français is
-     * introduced in 3ème, Anglais only in 5ème, and the lower band studies a
-     * combined awakening subject instead of separate science and civics.
-     */
+    /** Français from 3eme, Anglais from 5eme, combined awakening below that. */
     public function test_subjects_only_reach_the_grades_that_study_them(): void
     {
         $lessons = Lesson::with('schoolClass')->get();
@@ -83,12 +78,7 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * The three rules that changed, asserted from the data rather than from
-     * the curriculum table, so a seeder bug cannot hide behind it.
-     *
-     * @return array<string, array{string, int}>
-     */
+    /** @return array<string, array{string, int}> */
     public static function introducedSubjectProvider(): array
     {
         return [
@@ -114,10 +104,6 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * The lower band studies one combined awakening subject; the split pair
-     * belongs to the older bands.
-     */
     public function test_the_lower_band_studies_the_combined_awakening_subject(): void
     {
         $combined = Lesson::with('schoolClass')->where('subject', 'Éveil Scientifique et Civique')->get();
@@ -133,9 +119,6 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * Every class gets exactly the weekly hours its band prescribes.
-     */
     public function test_each_class_runs_its_band_weekly_hours(): void
     {
         foreach (SchoolClass::with('lessons')->get() as $class) {
@@ -156,11 +139,7 @@ class CurriculumSeedTest extends TestCase
         $this->assertSame(30, Curriculum::weeklyHours(6));
     }
 
-    /**
-     * Primary teachers specialise by grade band. Nobody teaches both a 1ère
-     * and a 6ème class, and a subject taught in more than one band has a
-     * different teacher in each.
-     */
+    /** Nobody teaches both a 1ere and a 6eme class. */
     public function test_no_teacher_works_across_grade_bands(): void
     {
         $teachers = Teacher::with('lessons.schoolClass')->get();
@@ -181,10 +160,7 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * A subject running in several bands is covered by different staff in
-     * each - the point of the band split.
-     */
+    /** A subject running in several bands has different staff in each. */
     public function test_shared_subjects_have_different_teachers_per_band(): void
     {
         foreach (['Mathématiques', 'Langue Arabe', 'Éducation Physique'] as $subject) {
@@ -211,10 +187,6 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * Load balancing: several classes per band means several teachers can
-     * share a subject within it.
-     */
     public function test_a_band_can_share_a_subject_between_teachers(): void
     {
         $frenchTeachersPerBand = Lesson::with(['schoolClass', 'teacher'])
@@ -229,12 +201,8 @@ class CurriculumSeedTest extends TestCase
     }
 
     /**
-     * No teacher owns a class's week.
-     *
-     * A titulaire used to hold 19 of a lower-band class's 21 hours - 90% -
-     * which is not how a school runs. The core is now split between the
-     * titulaire and an adjoint, and this pins the ceiling so the split cannot
-     * quietly collapse back onto one person.
+     * A titulaire once held 19 of a lower-band class 21 hours. This pins the
+     * ceiling so the split cannot collapse back onto one person.
      */
     public function test_no_teacher_dominates_a_class_week(): void
     {
@@ -276,9 +244,6 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * Nobody is timetabled beyond a full-time primary load.
-     */
     public function test_no_teacher_exceeds_a_full_weekly_load(): void
     {
         $teachers = Teacher::with('lessons')->get();
@@ -303,11 +268,8 @@ class CurriculumSeedTest extends TestCase
     }
 
     /**
-     * The split is a property of the curriculum, not an accident of one seed
-     * run: check the role table itself adds up for every titulaire band.
-     *
-     * Grades 1 and 3 only. The upper band has no titulaire to check - it is
-     * staffed by subject, which the coherence tests below cover instead.
+     * Checked against the role table itself, not one seed run. Grades 1 and 3
+     * only: the upper band has no titulaire, which the coherence tests cover.
      */
     public function test_the_role_split_respects_the_ceiling_by_construction(): void
     {
@@ -350,17 +312,9 @@ class CurriculumSeedTest extends TestCase
     }
 
     /**
-     * The coherent subject groups an upper-band teacher may work within.
-     *
-     * Written out here rather than read from Curriculum on purpose: this test
-     * exists to pin the staffing model against an independent statement of
-     * what counts as related, so a change to the curriculum that quietly
-     * merged two unrelated subjects would fail here rather than agree with
-     * itself.
-     *
-     * Éducation Islamique and Éducation Civique share a group: they are the
-     * moral-and-citizenship pair, an hour each, and are taught together.
-     * Histoire-Géographie is already one subject in the Tunisian programme.
+     * Written out here rather than read from Curriculum on purpose: an
+     * independent statement of what counts as related, so a change that merged
+     * two unrelated subjects fails here rather than agreeing with itself.
      *
      * @return array<string, list<string>>
      */
@@ -380,13 +334,9 @@ class CurriculumSeedTest extends TestCase
     }
 
     /**
-     * No upper-band teacher spans unrelated subjects.
-     *
-     * The titulaire model put one 6ème teacher in front of Arabic, maths,
-     * science and Islamic studies at once. Hours and subject counts were
-     * inside their caps, so nothing failed; the assignment was simply not a
-     * job anybody holds. This is the assertion that makes it impossible
-     * rather than unlikely.
+     * The titulaire model put one 6eme teacher in front of Arabic, maths,
+     * science and Islamic studies at once, inside every cap. This makes that
+     * impossible rather than unlikely.
      */
     public function test_no_upper_band_teacher_spans_unrelated_subjects(): void
     {
@@ -436,10 +386,7 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * The upper band really is specialised: every teacher there covers one
-     * subject across several classes, rather than several subjects in one.
-     */
+    /** One subject across several classes, rather than several subjects in one. */
     public function test_upper_band_teachers_carry_one_subject_across_classes(): void
     {
         $upper = Teacher::with('lessons.schoolClass')->get()
@@ -476,11 +423,7 @@ class CurriculumSeedTest extends TestCase
         }
     }
 
-    /**
-     * The lower and mid bands keep the titulaire model, asserted from the
-     * seeded rows: each class there has one teacher carrying the bulk of its
-     * week, and that teacher covers several subjects.
-     */
+    /** Asserted from the seeded rows, not from the role table. */
     public function test_the_lower_and_mid_bands_keep_the_titulaire_model(): void
     {
         $classes = SchoolClass::with('lessons')->get()

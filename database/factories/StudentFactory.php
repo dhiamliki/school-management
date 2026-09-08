@@ -7,9 +7,7 @@ use App\Models\Student;
 use App\Support\TunisianNames;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Student>
- */
+/** @extends Factory<Student> */
 class StudentFactory extends Factory
 {
     /**
@@ -32,9 +30,7 @@ class StudentFactory extends Factory
         ...TunisianNames::FEMALE_FIRST_NAMES,
     ];
 
-    /**
-     * @var list<string>
-     */
+    /** @var list<string> */
     public const LAST_NAMES = [
         'Ben Ali', 'Trabelsi', 'Mliki', 'Chkir', 'Gharbi',
         'Jebali', 'Bouazizi', 'Hamdi', 'Khelifi', 'Mejri',
@@ -117,9 +113,6 @@ class StudentFactory extends Factory
         return $matricule;
     }
 
-    /**
-     * Determine whether a matricule is already in use.
-     */
     protected function matriculeTaken(string $matricule): bool
     {
         return in_array($matricule, static::$usedMatricules, true)

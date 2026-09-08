@@ -28,36 +28,23 @@ class SchoolClass extends Model
         return $this->hasMany(Lesson::class);
     }
 
-    /**
-     * Every attendance mark belonging to this class's pupils.
-     */
     public function attendances(): HasManyThrough
     {
         return $this->hasManyThrough(Attendance::class, Student::class);
     }
 
-    /**
-     * The class-wide attendance tallies, in one query per status.
-     *
-     * Only the show endpoint applies this: the index would otherwise pay for
-     * four correlated subqueries per row to fill a column nothing displays.
-     */
+    /** One query per status. Only the show endpoint applies it. */
     public function scopeWithAttendanceSummary(Builder $query): Builder
     {
         return $query->withCount(self::attendanceSummaryCounts());
     }
 
-    /**
-     * The same tallies for a model already in hand.
-     */
     public function loadAttendanceSummary(): static
     {
         return $this->loadCount(self::attendanceSummaryCounts());
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private static function attendanceSummaryCounts(): array
     {
         return [
@@ -68,20 +55,13 @@ class SchoolClass extends Model
         ];
     }
 
-    /**
-     * Whether the tallies above have been loaded. The resource uses this to
-     * keep the block out of index responses.
-     */
+    /** Guards the resource block, so nesting a class does not count per row. */
     public function hasAttendanceSummary(): bool
     {
         return $this->getAttribute('attendance_records_count') !== null;
     }
 
-    /**
-     * The share of this class's marks where a pupil was present, to one
-     * decimal. Null when the class has nothing on record - see
-     * Student::attendanceRate() for why that is not reported as 0%.
-     */
+    /** Null, not 0, when nothing is on record. */
     public function attendanceRate(): ?float
     {
         $records = (int) $this->getAttribute('attendance_records_count');

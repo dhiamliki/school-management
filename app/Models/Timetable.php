@@ -20,8 +20,7 @@ class Timetable extends Model
     public const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
     /**
-     * Days that finish at lunchtime. Samedi is a half day: the afternoon
-     * slots below are never taught on it.
+     * Samedi finishes at lunchtime.
      *
      * @var list<string>
      */
@@ -41,9 +40,6 @@ class Timetable extends Model
         ['15:00', '16:00'],
     ];
 
-    /**
-     * How many of the slots above a half day actually runs.
-     */
     public const HALF_DAY_SLOT_COUNT = 2;
 
     /**
@@ -73,14 +69,9 @@ class Timetable extends Model
     }
 
     /**
-     * Store times as H:i:s, whatever format they arrive in.
-     *
-     * MySQL normalises a TIME column on its own, but SQLite keeps the exact
-     * string it was given. Without this the same row is '08:00' on one driver
-     * and '08:00:00' on the other, and the overlap check compares times as
-     * text: '09:00' sorts before '09:00:00' because it is a prefix, so a
-     * 08:00-09:00 slot would be reported as clashing with 09:00-10:00. Pinning
-     * the format on write keeps that comparison honest everywhere.
+     * MySQL normalises a TIME column on write; SQLite keeps whatever string it
+     * was given. Normalising here keeps the two comparable, which the conflict
+     * detector relies on.
      */
     protected function startTime(): Attribute
     {
@@ -93,7 +84,8 @@ class Timetable extends Model
     }
 
     /**
-     * Pad 'H:i' (or 'H') out to the 'H:i:s' the column holds.
+     * MySQL normalises TIME on write, SQLite keeps the literal string, so both
+     * sides of a text comparison have to be padded to H:i:s here.
      */
     public static function normaliseTime(mixed $time): ?string
     {

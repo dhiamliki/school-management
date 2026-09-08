@@ -15,9 +15,6 @@ use Illuminate\Validation\Rule;
 
 class TimetableController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request): AnonymousResourceCollection
     {
         return TimetableResource::collection(
@@ -30,11 +27,8 @@ class TimetableController extends Controller
     }
 
     /**
-     * Report the conflicts a proposed slot would create, without saving it.
-     *
-     * Same detector the Form Requests use, so a slot this endpoint calls
-     * clean is a slot the save will accept. It exists so the form can warn
-     * while the user is still filling it in rather than only on rejection.
+     * Same detector the form requests use, so a slot this calls clean is a slot
+     * the save accepts.
      */
     public function checkConflicts(Request $request, TimetableConflictDetector $detector): JsonResponse
     {
@@ -64,9 +58,6 @@ class TimetableController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(StoreTimetableRequest $request): JsonResponse
     {
         $timetable = Timetable::create($request->validated());
@@ -76,9 +67,6 @@ class TimetableController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Timetable $timetable): TimetableResource
     {
         $timetable->load(['lesson.teacher', 'lesson.schoolClass']);
@@ -86,9 +74,6 @@ class TimetableController extends Controller
         return new TimetableResource($timetable);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(UpdateTimetableRequest $request, Timetable $timetable): TimetableResource
     {
         $timetable->update($request->validated());
@@ -96,9 +81,6 @@ class TimetableController extends Controller
         return new TimetableResource($timetable->load(['lesson.teacher', 'lesson.schoolClass']));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Timetable $timetable): Response
     {
         $timetable->delete();

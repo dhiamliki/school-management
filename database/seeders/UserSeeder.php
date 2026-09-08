@@ -8,14 +8,10 @@ use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * The local development administrator account.
-     */
+    /** The local development administrator account. */
     public const EMAIL = 'admin@ecole.tn';
 
-    /**
-     * The plain password given to the local administrator account.
-     */
+    /** The plain password given to the local administrator account. */
     public const PASSWORD = 'password';
 
     /**

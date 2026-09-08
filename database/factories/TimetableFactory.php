@@ -5,9 +5,7 @@ namespace Database\Factories;
 use App\Models\Timetable;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Timetable>
- */
+/** @extends Factory<Timetable> */
 class TimetableFactory extends Factory
 {
     /**
@@ -25,9 +23,7 @@ class TimetableFactory extends Factory
      */
     public const DAYS = Timetable::DAYS;
 
-    /**
-     * @var list<array{string, string}>
-     */
+    /** @var list<array{string, string}> */
     public const SLOTS = Timetable::SLOTS;
 
     /**
@@ -51,9 +47,6 @@ class TimetableFactory extends Factory
         ];
     }
 
-    /**
-     * Place the slot on a specific day and time.
-     */
     public function at(string $day, string $startTime, string $endTime): static
     {
         return $this->state(fn (array $attributes) => [

@@ -6,27 +6,17 @@ use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * @mixin Attendance
- */
+/** @mixin Attendance */
 class AttendanceResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * Every field is listed explicitly so that new columns are not exposed
-     * by accident.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
             'id' => $this->id,
             'student_id' => $this->student_id,
             'lesson_id' => $this->lesson_id,
-            // Plain Y-m-d: the marking grid keys its rows off this, and a full
-            // ISO timestamp would only have to be trimmed back on the client.
+            // Plain Y-m-d: the marking grid keys its rows off this.
             'date' => $this->date?->toDateString(),
             'status' => $this->status,
             'note' => $this->note,

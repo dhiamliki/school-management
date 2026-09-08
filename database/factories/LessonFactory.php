@@ -8,9 +8,7 @@ use App\Models\Teacher;
 use App\Support\Curriculum;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Lesson>
- */
+/** @extends Factory<Lesson> */
 class LessonFactory extends Factory
 {
     /**
@@ -40,13 +38,7 @@ class LessonFactory extends Factory
         'Éducation Physique' => ['Jeux collectifs', 'Course et endurance', 'Gymnastique au sol', 'Coordination et équilibre'],
     ];
 
-    /**
-     * Whether a subject belongs to a grade's programme.
-     *
-     * Delegates to the curriculum so the rule lives in one place: Français
-     * starts in 3ème, Anglais in 5ème, and the lower band teaches a combined
-     * awakening subject rather than separate science and civics.
-     */
+    /** Delegates to Curriculum so the rule lives in one place. */
     public static function subjectFitsGrade(string $subject, int $grade): bool
     {
         return Curriculum::subjectFitsGrade($subject, $grade);
@@ -70,9 +62,6 @@ class LessonFactory extends Factory
         ];
     }
 
-    /**
-     * Assign the lesson to a teacher; the subject and title follow from them.
-     */
     public function taughtBy(Teacher $teacher): static
     {
         return $this->state(fn (array $attributes) => [
@@ -80,9 +69,6 @@ class LessonFactory extends Factory
         ]);
     }
 
-    /**
-     * Assign the lesson to a class.
-     */
     public function forClass(SchoolClass $schoolClass): static
     {
         return $this->state(fn (array $attributes) => [

@@ -13,9 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-/**
- * The two dashboard feeds: today's lessons, and the derived activity list.
- */
+/** The two dashboard feeds: today's lessons, and the derived activity list. */
 class DashboardTest extends TestCase
 {
     use RefreshDatabase;
@@ -80,9 +78,6 @@ class DashboardTest extends TestCase
         $this->assertSame('Salle 101', $response->json('data.0.room'));
     }
 
-    /**
-     * Every teaching day resolves to its own French name.
-     */
     public function test_each_weekday_matches_its_french_name(): void
     {
         $days = [
@@ -156,9 +151,6 @@ class DashboardTest extends TestCase
         $this->assertStringContainsString('Anis Saidi', $marks->first()['label']);
     }
 
-    /**
-     * One busy table must not crowd out the rest of the feed.
-     */
     public function test_no_single_table_can_fill_the_activity_feed(): void
     {
         Student::factory()->count(30)->create();
@@ -230,9 +222,6 @@ class DashboardTest extends TestCase
             ->assertJsonPath('context.teacher_subjects', 2);
     }
 
-    /**
-     * No class states a capacity, so there is nothing to be a percentage of.
-     */
     public function test_occupancy_is_null_rather_than_a_division_by_zero(): void
     {
         $this->getJson('/api/dashboard/stats')

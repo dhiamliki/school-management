@@ -37,23 +37,15 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * A request that looks like it came from the SPA.
-     *
-     * Sanctum only attaches the session middleware when the Referer or Origin
-     * names a host in SANCTUM_STATEFUL_DOMAINS, which phpunit.xml pins to
-     * localhost. Without this header the test client is exactly the sessionless
-     * caller that test_a_sessionless_request_... covers, so the endpoints that
-     * need a session have to say so explicitly.
+     * Sanctum only attaches session middleware when the Referer names a stateful
+     * domain, which phpunit.xml pins to localhost.
      */
     private function fromSpa(): static
     {
         return $this->withHeader('Referer', 'http://localhost/login');
     }
 
-    /**
-     * Sign in over HTTP the way the SPA does, rather than with actingAs, so
-     * the session itself is part of what is under test.
-     */
+    /** Over HTTP rather than actingAs, so the session itself is under test. */
     private function signIn(User $user): void
     {
         $this->fromSpa()->postJson('/api/login', [
@@ -62,10 +54,7 @@ class AuthenticationTest extends TestCase
         ])->assertOk();
     }
 
-    /**
-     * The bucket the throttle middleware fills for this test client. It keys
-     * on the resolved IP, which the test request reports as 127.0.0.1.
-     */
+    /** The throttle keys on the resolved IP. */
     private function throttleKey(): string
     {
         return sha1('127.0.0.1');
@@ -138,9 +127,6 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    /**
-     * Five attempts a minute, then a French 429 carrying the wait.
-     */
     public function test_repeated_failures_are_throttled_in_french(): void
     {
         $user = $this->user();
@@ -163,10 +149,7 @@ class AuthenticationTest extends TestCase
         $response->assertHeader('Retry-After');
     }
 
-    /**
-     * The throttle has to bite on a correct password too. Letting a valid one
-     * through would turn the limit into a way of telling the two apart.
-     */
+    /** Letting a valid password through would turn the limit into an oracle. */
     public function test_the_throttle_does_not_exempt_the_right_password(): void
     {
         $user = $this->user();
@@ -187,12 +170,8 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * Without a session the endpoint refuses before it reads the credentials,
-     * so a right password and a wrong one are answered identically.
-     *
-     * Previously the right one reached session()->regenerate() and raised a
-     * 500 while the wrong one still answered 422, which let an unauthenticated
-     * caller test passwords one at a time and read the answer off the status.
+     * A right and a wrong password must answer identically. Previously the right
+     * one raised a 500 and the wrong one a 422, which is a password oracle.
      */
     public function test_a_sessionless_request_cannot_be_used_to_test_passwords(): void
     {

@@ -11,9 +11,6 @@ class StoreTimetableRequest extends FormRequest
 {
     use ChecksTimetableConflicts;
 
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;

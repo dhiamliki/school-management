@@ -23,9 +23,6 @@ class CrudResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * The page size the API falls back to, and the ceiling it clamps to.
-     */
     private const DEFAULT_PER_PAGE = 15;
 
     private const MAX_PER_PAGE = 600;
@@ -37,9 +34,7 @@ class CrudResourceTest extends TestCase
         $this->actingAs(User::factory()->create());
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
+    /** @return array<string, array{string}> */
     public static function resourceProvider(): array
     {
         return [
@@ -57,12 +52,6 @@ class CrudResourceTest extends TestCase
      * can lean on rows created there.
      *
      * @return array{
-     *     model: class-string<Model>,
-     *     index_keys: list<string>,
-     *     show_keys: list<string>,
-     *     valid: callable,
-     *     invalid: list<array<string, mixed>>,
-     * }
      */
     private function spec(string $endpoint): array
     {
@@ -204,9 +193,6 @@ class CrudResourceTest extends TestCase
         return $specs[$endpoint];
     }
 
-    /**
-     * Create one row for the endpoint under test.
-     */
     private function makeRow(string $endpoint): mixed
     {
         return $this->spec($endpoint)['model']::factory()->create();

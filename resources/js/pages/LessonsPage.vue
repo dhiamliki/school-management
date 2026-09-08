@@ -14,9 +14,7 @@ const { items, loading, meta, saving, errors, failure, load, goToPage, save, des
 
 const teachers = ref([]);
 const schoolClasses = ref([]);
-// Reported separately from the list's own failure: the table can load
-// perfectly well while the dropdowns behind the form do not, and saying
-// "impossible de charger les données" over a full table helps nobody.
+// Separate from the list's own failure: the table can load while these do not.
 const optionsFailure = ref('');
 const showForm = ref(false);
 const editingId = ref(null);
@@ -68,8 +66,6 @@ onMounted(async () => {
         teachers.value = unwrapList(teacherResponse.data);
         schoolClasses.value = unwrapList(classResponse.data);
     } catch (error) {
-        // Left unhandled, this rejected into nothing and the form opened with
-        // two empty dropdowns and no explanation for them.
         optionsFailure.value =
             "Impossible de charger les enseignants et les classes. Rechargez la page avant d'ajouter un cours.";
     }

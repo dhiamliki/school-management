@@ -29,9 +29,8 @@ class AttendanceTest extends TestCase
     }
 
     /**
-     * Give a pupil an exact, known history: $present présent, $absent absent
-     * and $late retard marks, each against its own lesson so the unique index
-     * is never the thing under test here.
+     * Give a pupil an exact history, each mark against its own lesson so the
+     * unique index is never the thing under test.
      */
     private function history(Student $student, int $present, int $absent, int $late, string $date = '2026-09-01'): void
     {
@@ -199,11 +198,8 @@ class AttendanceTest extends TestCase
     }
 
     /**
-     * The default rule is a rate, and it ranks by rate rather than by volume.
-     *
-     * "Occasionnel" here has more absences than "Petite classe" but sits many
-     * more lessons, so a count rule would put them first and the genuinely
-     * struggling pupil second. The point of the rate is that it does not.
+     * Ranked by rate, not volume: the pupil with more absences but a lighter
+     * timetable must not outrank a worse rate.
      */
     public function test_at_risk_defaults_to_the_absence_rate_worst_first(): void
     {
@@ -235,9 +231,7 @@ class AttendanceTest extends TestCase
         $this->assertEquals(15.0, $response->json('rate'));
     }
 
-    /**
-     * The cutoff is exclusive, as "supérieur à 15 %" says.
-     */
+    /** The cutoff is exclusive, as "supérieur à 15 %" says. */
     public function test_a_pupil_exactly_on_the_cutoff_is_not_flagged(): void
     {
         $today = Carbon::today()->toDateString();
@@ -255,12 +249,8 @@ class AttendanceTest extends TestCase
     }
 
     /**
-     * The rule is fair across grade bands: identical behaviour has to give an
-     * identical verdict whether the pupil sits 40 lessons a month or 120.
-     *
-     * This is the regression the rate rule exists for - a raw count of "more
-     * than 5" flagged the second pupil and not the first, purely because the
-     * upper band has more weekly hours.
+     * Identical behaviour must give an identical verdict whether the pupil sits
+     * 21 hours a week or 30.
      */
     public function test_the_rate_rule_treats_a_light_and_a_heavy_timetable_alike(): void
     {
@@ -319,9 +309,6 @@ class AttendanceTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
-    /**
-     * The old count rule is still reachable for anyone who wants it.
-     */
     public function test_the_count_threshold_override_still_works(): void
     {
         $today = Carbon::today()->toDateString();
@@ -362,9 +349,7 @@ class AttendanceTest extends TestCase
             ->assertJsonValidationErrors('rate');
     }
 
-    /**
-     * Absences older than the window are history, not a current risk.
-     */
+    /** Absences older than the window are history, not a current risk. */
     public function test_at_risk_only_counts_the_recent_window(): void
     {
         $student = Student::factory()->create();
@@ -445,13 +430,8 @@ class AttendanceTest extends TestCase
     }
 
     /**
-     * The index must not cost a query per row.
-     *
-     * Every row of this list carries the pupil it belongs to, and
-     * StudentResource used to report that pupil's attendance unconditionally,
-     * falling back to counting on demand when the tallies were not preloaded.
-     * The index does not preload them, so a page of 60 marks ran past 300
-     * queries. The block is now conditional, which is what keeps this bounded.
+     * Every row carries a pupil, and StudentResource used to count on demand
+     * when the tallies were not preloaded: 60 rows ran past 300 queries.
      */
     public function test_the_attendance_index_does_not_query_per_row(): void
     {
@@ -474,10 +454,7 @@ class AttendanceTest extends TestCase
         );
     }
 
-    /**
-     * The nested pupil keeps its identifying fields; only the roll-up, which
-     * nothing on this endpoint reads, is left out.
-     */
+    /** Only the roll-up is dropped; the identifying fields stay. */
     public function test_the_attendance_index_still_carries_the_nested_pupil(): void
     {
         $student = Student::factory()->create(['name' => 'Ines Hamdi']);
@@ -490,10 +467,7 @@ class AttendanceTest extends TestCase
             ->assertJsonMissingPath('data.0.student.attendance');
     }
 
-    /**
-     * The endpoints whose responses the frontend reads the roll-up from still
-     * carry it, so the guard above cannot have blanked a field in use.
-     */
+    /** The guard above must not have blanked a field the frontend uses. */
     public function test_the_roll_up_is_present_wherever_the_frontend_reads_it(): void
     {
         $class = SchoolClass::factory()->create();
